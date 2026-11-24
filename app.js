@@ -3681,10 +3681,13 @@ async function checkMongoConnection(showToastAlert = false) {
       headers: { 'Accept': 'application/json' },
       cache: 'no-cache'
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
+    
+    let data = null;
+    try {
+      data = await res.json();
+    } catch(jsonErr) {}
 
-    if (data.status === 'connected') {
+    if (res.ok && data && data.status === 'connected') {
       isMongoOnline = true;
       updateMongoBadges(true, data.latencyMs);
       updateMongoModalStats(data);
@@ -3693,13 +3696,14 @@ async function checkMongoConnection(showToastAlert = false) {
       }
       return true;
     } else {
-      throw new Error(data.message || 'MongoDB not connected');
+      const helpMsg = data && data.help ? data.help : (data && data.error ? data.error : `HTTP ${res.status}`);
+      throw new Error(helpMsg);
     }
   } catch (err) {
     isMongoOnline = false;
     updateMongoBadges(false);
     if (showToastAlert) {
-      showToast(`MongoDB Offline: Run "python server.py" to enable cloud sync.`, 'info');
+      showToast(`MongoDB Offline: ${err.message}`, 'error');
     }
     return false;
   }

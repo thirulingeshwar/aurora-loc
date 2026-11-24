@@ -3,6 +3,7 @@ import sys
 import time
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
+import certifi
 
 MONGO_URI = os.environ.get(
     "MONGO_URI",
@@ -12,13 +13,25 @@ DB_NAME = "aurora_loc_db"
 
 app = Flask(__name__)
 
-# Initialize MongoClient with connection pooling & 6s timeout
+# Initialize MongoClient with certifi CA bundle and connection pooling
 _client = None
 
 def get_db():
     global _client
     if _client is None:
-        _client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=6000, connectTimeoutMS=6000)
+        try:
+            _client = MongoClient(
+                MONGO_URI,
+                tlsCAFile=certifi.where(),
+                serverSelectionTimeoutMS=6000,
+                connectTimeoutMS=6000
+            )
+        except Exception:
+            _client = MongoClient(
+                MONGO_URI,
+                serverSelectionTimeoutMS=6000,
+                connectTimeoutMS=6000
+            )
     return _client[DB_NAME]
 
 @app.after_request
@@ -57,10 +70,15 @@ def get_status():
             "environment": "Vercel Serverless"
         })
     except Exception as e:
+        err_str = str(e)
+        help_tip = ""
+        if "TLSV1_ALERT_INTERNAL_ERROR" in err_str or "SSL handshake failed" in err_str:
+            help_tip = "MongoDB Atlas blocked the IP address. In MongoDB Atlas, go to Network Access -> Add IP Address -> choose 'Allow Access From Anywhere' (0.0.0.0/0)."
         return jsonify({
             "status": "disconnected",
             "connected": False,
-            "error": str(e),
+            "error": err_str,
+            "help": help_tip,
             "message": "Could not connect to MongoDB Atlas cluster"
         }), 503
 

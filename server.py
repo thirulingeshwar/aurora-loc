@@ -4,11 +4,15 @@ import time
 from flask import Flask, request, jsonify, send_from_directory
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
+import certifi
 
 # =========================================================
 # CONFIGURATION
 # =========================================================
-MONGO_URI = "mongodb+srv://thirulingeshwart_db_user:tmNiQhs8ezdtJf19@cluster0.pavq1lb.mongodb.net/?retryWrites=true&w=majority"
+MONGO_URI = os.environ.get(
+    "MONGO_URI",
+    "mongodb+srv://thirulingeshwart_db_user:tmNiQhs8ezdtJf19@cluster0.pavq1lb.mongodb.net/?retryWrites=true&w=majority"
+)
 DB_NAME = "aurora_loc_db"
 PORT = 5000
 HOST = "0.0.0.0"
@@ -17,14 +21,22 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__, static_folder=BASE_DIR)
 
-# MongoDB Client Setup with 5s timeout
+# MongoDB Client Setup with certifi CA bundle
 try:
-    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=6000)
+    client = MongoClient(
+        MONGO_URI,
+        tlsCAFile=certifi.where(),
+        serverSelectionTimeoutMS=6000
+    )
     db = client[DB_NAME]
 except Exception as e:
-    print(f"Error initializing MongoClient: {e}")
-    client = None
-    db = None
+    try:
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=6000)
+        db = client[DB_NAME]
+    except Exception as e2:
+        print(f"Error initializing MongoClient: {e2}")
+        client = None
+        db = None
 
 # =========================================================
 # CORS HEADERS (Natively supported for all origins)
