@@ -3659,18 +3659,19 @@ document.addEventListener('DOMContentLoaded', initApp);
 // =========================================================
 const MONGO_API_BASE = (window.AURORA_BACKEND_URL)
   ? window.AURORA_BACKEND_URL
-  : ((window.location.protocol === 'file:' || !window.location.port.includes('5000'))
-    ? (window.location.protocol === 'https:' ? '' : 'http://localhost:5000')
-    : '');
+  : (window.location.origin.includes('vercel.app') || window.location.port.includes('5000'))
+    ? ''
+    : (window.location.protocol === 'file:' ? 'http://localhost:5000' : '');
 let isMongoOnline = false;
 let mongoSyncTimeout = null;
 
 async function checkMongoConnection(showToastAlert = false) {
-  if (!MONGO_API_BASE && window.location.protocol === 'https:' && !window.location.origin.includes('localhost')) {
+  // If running on GitHub Pages without a backend, gracefully use local storage
+  if (window.location.origin.includes('github.io') && !window.AURORA_BACKEND_URL) {
     isMongoOnline = false;
     updateMongoBadges(false);
     if (showToastAlert) {
-      showToast(`Running on GitHub Pages in Static Mode (Local Cache Active)`, 'info');
+      showToast(`GitHub Pages is static-only (Local Storage mode active). Use Vercel or local server for MongoDB Atlas live sync.`, 'info');
     }
     return false;
   }
