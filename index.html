@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AURORA LOC — Component & Office Inventory System</title>
+  <meta name="theme-color" content="#2563eb">
+  <link rel="icon" type="image/png" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQbyntK1DtKHhwrnfrzLvxdVPPO2jw_5-7yUwkLDhT1Og&s=10">
+
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              500: '#2563eb',
+              600: '#1d4ed8',
+              700: '#1e40af'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Maps JavaScript API with User-Provided Key -->
+  <script>
+    window.onGoogleMapsLoaded = function() {
+      if (window.initGoogleMap) {
+        window.initGoogleMap();
+      }
+    };
+    window.gm_authFailure = function() {
+      console.warn("Google Maps authentication failure. Falling back to OpenStreetMap/Blueprint view.");
+      if (window.fallbackToLeafletOrSketch) {
+        window.fallbackToLeafletOrSketch();
+      }
+    };
+  </script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD9pts0K8uAe8vL2gI1EcIyc0p6S1pB6tQ&libraries=places,geometry&callback=onGoogleMapsLoaded" async defer></script>
+
+  <!-- Leaflet Map CSS & JS (Secondary Fallback) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* Leaflet pin styling */
+    .leaflet-popup-content-wrapper {
+      border-radius: 14px;
+      padding: 4px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+    }
+    .custom-map-pin {
+      background: transparent;
+      border: none;
+    }
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 h-full flex flex-col font-sans antialiased select-none">
+
+  <!-- ======================================================== -->
+  <!-- 1. LOGIN SCREEN (START -> Login IN -> User Name, Password) -->
+  <!-- ======================================================== -->
+  <div id="login-overlay" class="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-8 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-6">
+      
+      <div class="text-center space-y-2">
+        <div class="w-20 h-20 mx-auto rounded-2xl bg-white dark:bg-slate-800 p-2 shadow-lg shadow-blue-500/10 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden">
+          <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQbyntK1DtKHhwrnfrzLvxdVPPO2jw_5-7yUwkLDhT1Og&s=10" alt="Company Logo" class="w-full h-full object-contain">
+        </div>
+        <h1 class="text-2xl font-black tracking-tight text-slate-900 dark:text-white">AURORA LOC</h1>
+        <p class="text-xs text-slate-500">Component & Office Location Management System</p>
+      </div>
+
+      <!-- Role Selector Tabs: Admin Login vs Staff Login -->
+      <div class="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+        <button 
+          type="button" 
+          id="login-role-admin" 
+          onclick="setLoginRole('admin')" 
+          class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-blue-600 text-white shadow-sm cursor-pointer"
+        >
+          <i data-lucide="shield" class="w-3.5 h-3.5"></i> Admin Login
+        </button>
+        <button 
+          type="button" 
+          id="login-role-staff" 
+          onclick="setLoginRole('staff')" 
+          class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+        >
+          <i data-lucide="user" class="w-3.5 h-3.5"></i> Staff Login
+        </button>
+      </div>
+
+      <!-- Admin Credentials Hint -->
+      <div id="login-hint-admin" class="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-900 text-xs text-blue-700 dark:text-blue-300">
+        <span class="font-bold block mb-0.5">Admin Credentials:</span>
+        Username: <code class="font-bold">admin</code> &bull; Password: <code class="font-bold">aurora123</code>
+      </div>
+
+      <!-- Staff Credentials Hint (Given by Admin) -->
+      <div id="login-hint-staff" class="hidden p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-900 text-xs text-emerald-800 dark:text-emerald-300">
+        <span class="font-bold block mb-0.5">Staff Credentials (Given by Admin):</span>
+        <span>Enter your Staff Email / Username and Password given by Admin (default: <code class="font-bold">staff123</code>).</span>
+        <div id="login-staff-quick-list" class="mt-2 pt-2 border-t border-emerald-200/60 dark:border-emerald-800/60 space-y-1 text-[11px]">
+          <!-- Dynamically populated with active staff accounts -->
+        </div>
+      </div>
+
+      <form id="login-form" onsubmit="return handleLogin(event);" class="space-y-4">
+        <div>
+          <label id="login-username-label" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">USER Name / Email</label>
+          <input 
+            type="text" 
+            id="login-username" 
+            value="admin" 
+            required 
+            placeholder="Enter username or staff email" 
+            class="w-full text-sm p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+          >
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Password</label>
+          <input 
+            type="password" 
+            id="login-password" 
+            value="aurora123" 
+            required 
+            placeholder="Enter password" 
+            class="w-full text-sm p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+
+        <button 
+          type="button" 
+          onclick="return handleLogin(event);"
+          class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-600/30 transition duration-150 flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <span>Login IN</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <div class="text-center text-[11px] text-slate-400">
+        Role-Based Access: Admin (Full Controls) &bull; Staff (Office Inventory & "Ask" Only)
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- 2. MAIN APP DASHBOARD (Revealed after Login) -->
+  <!-- ======================================================== -->
+  <div id="logged-in-container" class="flex-1 flex flex-col h-full overflow-hidden hidden">
+
+    <!-- Top Header Bar (Admin EMAIL ID display matching sketch) -->
+    <header id="admin-header" class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 flex items-center justify-between flex-shrink-0 z-20">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center overflow-hidden flex-shrink-0">
+          <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQbyntK1DtKHhwrnfrzLvxdVPPO2jw_5-7yUwkLDhT1Og&s=10" alt="Company Logo" class="w-full h-full object-contain">
+        </div>
+        <div>
+          <h1 class="text-base font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            AURORA <span class="text-blue-600 font-extrabold text-xs px-2 py-0.5 bg-blue-50 dark:bg-blue-950 rounded">LOC APP</span>
+          </h1>
+          <p class="text-[10px] text-slate-400">List of Components & Multi-Office Tracking</p>
+        </div>
+      </div>
+
+      <!-- Center / Right Info: Admin EMAIL ID as drawn in the sketch -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div id="admin-mongo-badge" onclick="checkMongoConnection(true)" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-sm cursor-pointer transition hover:scale-105" title="MongoDB Atlas: cluster0.pavq1lb.mongodb.net (Click to test/sync)">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="mongo-badge-text">🍃 MongoDB Live</span>
+        </div>
+
+        <div class="flex items-center gap-2.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700">
+          <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+          <div class="text-left">
+            <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Admin Account</span>
+            <span id="admin-email-display" class="text-xs font-bold text-slate-800 dark:text-slate-100 font-mono">admin@aurora.com</span>
+          </div>
+        </div>
+
+        <button 
+          onclick="openAdminRequestsModal()" 
+          id="admin-pending-requests-btn" 
+          class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-xl text-xs font-bold border border-blue-200 dark:border-blue-900/60 shadow-sm cursor-pointer transition"
+          title="View Staff Component Requests & Send Parts"
+        >
+          <i data-lucide="package-search" class="w-4 h-4 text-blue-600"></i>
+          <span>Staff Requests</span>
+          <span id="admin-pending-req-badge" class="hidden px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[10px] font-black">0</span>
+        </button>
+
+        <button 
+          onclick="openView('new')" 
+          class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm cursor-pointer"
+          title="Open Admin Data Suite"
+        >
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>Admin Data</span>
+        </button>
+
+        <button 
+          onclick="handleLogout()" 
+          title="Sign Out" 
+          class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition cursor-pointer"
+        >
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Staff Top Header Bar (Shown when logged in as Staff) -->
+    <header id="staff-header" class="hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 flex items-center justify-between flex-shrink-0 z-20">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center overflow-hidden flex-shrink-0">
+          <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQbyntK1DtKHhwrnfrzLvxdVPPO2jw_5-7yUwkLDhT1Og&s=10" alt="Company Logo" class="w-full h-full object-contain">
+        </div>
+        <div>
+          <h1 class="text-base font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            AURORA <span class="text-emerald-600 font-extrabold text-xs px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950 rounded">STAFF PORTAL</span>
+          </h1>
+          <p class="text-[10px] text-slate-400">Component Inventory & Requisitions</p>
+        </div>
+      </div>
+
+      <!-- Staff Name and Office Info (Matching prompt: "it is show the staff name and office") -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div id="staff-mongo-badge" onclick="checkMongoConnection(true)" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-sm cursor-pointer transition hover:scale-105" title="MongoDB Atlas: cluster0.pavq1lb.mongodb.net">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="mongo-badge-text">🍃 MongoDB Live</span>
+        </div>
+
+        <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700">
+          <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+          <div class="text-left">
+            <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Staff In-Charge</span>
+            <span id="staff-user-name-display" class="text-xs font-bold text-slate-800 dark:text-slate-100">Staff Name</span>
+          </div>
+        </div>
+
+        <div class="hidden sm:flex items-center gap-2 bg-blue-50 dark:bg-blue-950/60 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60">
+          <i data-lucide="building" class="w-3.5 h-3.5 text-blue-600"></i>
+          <div class="text-left">
+            <span class="text-[9px] uppercase tracking-wider text-blue-500 font-bold block">Assigned Office</span>
+            <span id="staff-user-office-display" class="text-xs font-bold text-blue-700 dark:text-blue-300">Office Name</span>
+          </div>
+        </div>
+
+        <button 
+          onclick="openStaffAskModal()" 
+          class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition"
+          title="Ask Admin to Send Components"
+        >
+          <i data-lucide="hand" class="w-4 h-4"></i>
+          <span>Ask Admin for Components</span>
+        </button>
+
+        <button 
+          onclick="handleLogout()" 
+          title="Sign Out" 
+          class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition cursor-pointer"
+        >
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area: Left Menu + Center Map + Right Office & Component Lists -->
+    <div id="admin-dashboard-view" class="flex-1 flex flex-col md:flex-row overflow-hidden">
+
+      <!-- ======================================================== -->
+      <!-- LEFT ACTION BAR (Matching sketch: Ask, MOVING, Received, history, New) -->
+      <!-- ======================================================== -->
+      <aside class="w-full md:w-36 lg:w-44 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex md:flex-col justify-around md:justify-start p-2 gap-1.5 flex-shrink-0 z-10 shadow-sm">
+        
+        <div class="hidden md:block px-2 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+          Operations
+        </div>
+
+        <!-- 1. Staff Requests & Send Components -->
+        <button 
+          onclick="openAdminRequestsModal()" 
+          data-view="ask"
+          class="sidebar-nav-btn flex-1 md:flex-initial flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+          title="Review Staff Component Requests & Send to Branches"
+        >
+          <div class="flex items-center gap-2.5">
+            <i data-lucide="package-search" class="w-4 h-4 text-blue-500"></i>
+            <span>Staff Requests</span>
+          </div>
+          <span id="sidebar-pending-req-badge" class="hidden px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[9px] font-black">0</span>
+        </button>
+
+        <!-- 2. MOVING -->
+        <button 
+          onclick="openView('moving')" 
+          data-view="moving"
+          class="sidebar-nav-btn flex-1 md:flex-initial flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          <i data-lucide="arrow-left-right" class="w-4 h-4 text-indigo-500"></i>
+          <span>Moving</span>
+        </button>
+
+        <!-- 3. General / Received -->
+        <button 
+          onclick="openView('received')" 
+          data-view="received"
+          class="sidebar-nav-btn flex-1 md:flex-initial flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          <i data-lucide="package-plus" class="w-4 h-4 text-emerald-500"></i>
+          <span>Received</span>
+        </button>
+
+        <!-- 4. History -->
+        <button 
+          onclick="openView('history')" 
+          data-view="history"
+          class="sidebar-nav-btn flex-1 md:flex-initial flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          <i data-lucide="history" class="w-4 h-4 text-amber-500"></i>
+          <span>History</span>
+        </button>
+
+        <!-- 5. New (Admin Data Creation Suite) -->
+        <button 
+          onclick="openView('new')" 
+          data-view="new"
+          class="sidebar-nav-btn flex-1 md:flex-initial flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          <i data-lucide="plus-circle" class="w-4 h-4 text-purple-500"></i>
+          <span>New</span>
+        </button>
+
+        <div class="hidden md:block mt-auto p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl text-[10px] text-slate-400 text-center space-y-1">
+          <div class="font-bold text-slate-600 dark:text-slate-300">Admin Mode</div>
+          <div>Tap "New" to add Components, Office Pins & Staff</div>
+        </div>
+      </aside>
+
+      <!-- ======================================================== -->
+      <!-- CENTER: "Office location map" (Interactive Leaflet Map with South India Pins) -->
+      <!-- ======================================================== -->
+      <section class="flex-1 flex flex-col min-w-0 bg-slate-900 relative h-full min-h-[480px] overflow-hidden">
+        
+        <!-- Map Title Banner & View Toggle (Live Map vs Blueprint Sketch) -->
+        <div class="absolute top-3 left-3 z-[400] flex flex-wrap items-center gap-2">
+          <div class="bg-white/95 dark:bg-slate-900/95 backdrop-blur px-3 py-1.5 rounded-xl shadow-md border border-slate-200/80 dark:border-slate-800 flex items-center gap-2">
+            <i data-lucide="map" class="w-4 h-4 text-blue-600"></i>
+            <div>
+              <h3 class="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Office Location Map</h3>
+            </div>
+          </div>
+
+          <!-- Dual Map Switcher -->
+          <div class="bg-white/95 dark:bg-slate-900/95 backdrop-blur p-1 rounded-xl shadow-md border border-slate-200/80 dark:border-slate-800 flex items-center gap-1 text-[11px] font-bold">
+            <button id="map-mode-osm" onclick="setMapMode('google')" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white transition flex items-center gap-1">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Google Maps
+            </button>
+            <button id="map-mode-sketch" onclick="setMapMode('sketch')" class="px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1">
+              <i data-lucide="compass" class="w-3.5 h-3.5"></i> Blueprint Sketch
+            </button>
+          </div>
+        </div>
+
+        <!-- 1. Leaflet OpenStreetMap Canvas -->
+        <div id="office-location-map" class="w-full flex-1 z-0" style="min-height: 480px; height: 100%; width: 100%;"></div>
+
+        <!-- 2. Interactive SVG Blueprint Map (Matching User's Hand-Drawn Sketch) -->
+        <div id="office-sketch-map" class="w-full flex-1 hidden z-0 bg-slate-950 text-white relative flex items-center justify-center p-4 overflow-hidden" style="min-height: 480px; height: 100%; width: 100%;">
+          <!-- Rendered dynamically by renderSketchMap() -->
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- RIGHT PANEL: "Office list" & "Per office list of that component" -->
+      <!-- ======================================================== -->
+      <aside class="w-full md:w-96 lg:w-[430px] bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col flex-shrink-0 h-full overflow-hidden">
+        
+        <!-- Search & Filter Bar -->
+        <div class="p-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 flex-shrink-0">
+          <div class="relative flex-1">
+            <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input 
+              type="text" 
+              id="search-input" 
+              placeholder="Search components in this office..." 
+              class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+          </div>
+          <button onclick="openAdminRequestsModal()" title="View Staff Requests & Send Components" class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm">
+            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+            <span>Requests</span>
+            <span id="search-bar-pending-badge" class="hidden px-1.5 py-0.2 bg-amber-400 text-slate-900 rounded-full text-[9px] font-black">0</span>
+          </button>
+        </div>
+
+        <!-- Section A: "Office list" (1, 2, 3...) -->
+        <div class="p-3 border-b border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 flex-shrink-0">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <i data-lucide="building" class="w-3.5 h-3.5 text-blue-600"></i>
+              Office List
+            </h3>
+            <button onclick="openView('new'); switchNewTab('office')" class="text-[10px] text-blue-600 font-bold hover:underline flex items-center gap-0.5">
+              <i data-lucide="plus" class="w-3 h-3"></i> Add Office Pin
+            </button>
+          </div>
+
+          <!-- Office Cards List -->
+          <div id="office-list-container" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+            <!-- Dynamically populated in app.js -->
+          </div>
+        </div>
+
+        <!-- Section B: "Per office list of that component" (Office name, staff name, component image, name, count) -->
+        <div class="flex-1 flex flex-col overflow-hidden p-3 bg-white dark:bg-slate-900">
+          
+          <!-- Office Name & Staff in-charge header -->
+          <div id="selected-office-header" class="flex-shrink-0 mb-3">
+            <!-- Dynamically populated in app.js -->
+          </div>
+
+          <div class="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+            <span>Components In This Office</span>
+            <button onclick="openView('new'); switchNewTab('comp')" class="text-[10px] text-purple-600 font-bold hover:underline flex items-center gap-0.5">
+              <i data-lucide="plus" class="w-3 h-3"></i> Add Component
+            </button>
+          </div>
+
+          <!-- Scrollable Component Cards List -->
+          <div id="per-office-components-container" class="flex-1 overflow-y-auto space-y-2 pr-1">
+            <!-- Dynamically populated in app.js with Image, Name, Count! -->
+          </div>
+
+        </div>
+
+      </aside>
+
+    </div>
+
+    <!-- 2. STAFF PAGE VIEW (Dedicated Staff Portal: "they only ask and see the compuent list only") -->
+    <div id="staff-portal-view" class="hidden flex-1 flex flex-col overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 sm:p-6 space-y-5">
+      
+      <!-- Staff Office Banner -->
+      <div id="staff-office-banner" class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <!-- Dynamically rendered in renderStaffPortal() -->
+      </div>
+
+      <!-- Component List Section: Staff Ask Admin for Components List -->
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 flex-1 flex flex-col">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h2 class="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="list-checks" class="w-5 h-5 text-blue-600"></i>
+              Ask Admin for Components List
+            </h2>
+            <p class="text-xs text-slate-400">Enter count needed and reason to ask Admin to send components to your branch</p>
+          </div>
+          <!-- Search Bar & Submit All -->
+          <div class="flex items-center gap-2">
+            <div class="relative w-full sm:w-64">
+              <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input 
+                type="text" 
+                id="staff-search-input" 
+                placeholder="Search by name, number..." 
+                class="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+              >
+            </div>
+            <button 
+              type="button"
+              onclick="staffBulkAskFromList()" 
+              class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition flex-shrink-0"
+              title="Submit all filled component requests to Admin"
+            >
+              <i data-lucide="send" class="w-3.5 h-3.5"></i>
+              <span>Submit Requests</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Components List Container (Table / List matching user prompt) -->
+        <div class="overflow-x-auto -mx-1">
+          <div id="staff-components-grid" class="w-full">
+            <!-- Populated dynamically in app.js with Image, Component Name, Component Number, Count Needed, Reason, Action -->
+          </div>
+        </div>
+
+        <!-- Mobile Quick Submit Button -->
+        <div class="sm:hidden pt-2">
+          <button 
+            type="button"
+            onclick="staffBulkAskFromList()" 
+            class="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <i data-lucide="send" class="w-4 h-4"></i>
+            <span>Submit Requests to Admin</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- My Component Requests to Admin ("Asking") Section -->
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+          <h3 class="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+            <i data-lucide="send" class="w-4 h-4 text-blue-500"></i>
+            My Component Requests to Admin ("Asking")
+          </h3>
+          <span class="text-[11px] text-slate-400">Track components you asked Admin to send to this branch</span>
+        </div>
+        <div id="staff-requisitions-container" class="space-y-2">
+          <!-- Populated dynamically in app.js -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: "ASKING" & "ADMIN SEND" (Staff Asks • Admin Sends) -->
+  <!-- ======================================================== -->
+  <div id="modal-asking" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 max-h-[90vh] flex flex-col">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+        <div>
+          <h3 id="modal-asking-title" class="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+            <i data-lucide="hand" class="w-5 h-5 text-blue-600"></i>
+            <span>Ask Components from Admin</span>
+          </h3>
+          <p id="modal-asking-subtitle" class="text-xs text-slate-400">Request components for your branch office from Admin</p>
+        </div>
+        <button onclick="closeModal('modal-asking')" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="flex-1 overflow-y-auto space-y-4 pr-1">
+        
+        <!-- SECTION 1: STAFF VIEW (Staff Asks Admin for Components: Name, Number, Count, Reason, Image List) -->
+        <div id="staff-ask-section" class="space-y-4">
+          
+          <!-- Office and Staff In-Charge Header -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                <i data-lucide="building" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Branch Office</span>
+                <span id="staff-ask-office-display" class="font-extrabold text-slate-900 dark:text-white">Office Name</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Staff In-Charge</span>
+              <span id="staff-ask-staff-display" class="font-extrabold text-slate-800 dark:text-slate-200">Staff Name</span>
+            </div>
+          </div>
+
+          <!-- Hidden selects for backward compatibility -->
+          <select id="ask-office-select" class="hidden"></select>
+          <input type="hidden" id="ask-staff-input" value="">
+          <input type="hidden" id="ask-note-input" value="">
+          <div id="ask-component-picker-list" class="hidden"></div>
+
+          <!-- COMPONENT DETAILS BUILDER BOX (Component Name, Component Number, Count Needed, Reason, Image) -->
+          <form id="ask-form" onsubmit="event.preventDefault(); staffAddCompToList();" class="p-4 bg-blue-50/50 dark:bg-slate-800/40 rounded-2xl border border-blue-200/80 dark:border-slate-700 space-y-3.5 shadow-xs">
+            <div class="flex items-center justify-between pb-1 border-b border-blue-100 dark:border-slate-700/60">
+              <h4 class="text-xs font-black uppercase tracking-wider text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+                <i data-lucide="plus-circle" class="w-4 h-4 text-blue-600"></i>
+                <span>Add Component Details</span>
+              </h4>
+              <span class="text-[10px] text-slate-400 font-medium">Type details & tap "+ Add to List"</span>
+            </div>
+
+            <!-- Row 1: Component Name & Component Number -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Component Name <span class="text-red-500">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  id="staff-text-comp-name" 
+                  placeholder="e.g. Arduino Uno R3, 10k Resistor, Stepper Motor" 
+                  class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-blue-500 font-semibold"
+                  required
+                >
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Component Number / Code <span class="text-red-500">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  id="staff-text-comp-number" 
+                  placeholder="e.g. CMP-001, ARD-UNO-01, RES-10K" 
+                  class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
+                  required
+                >
+              </div>
+            </div>
+
+            <!-- Row 2: Count Needed, Reason & Image Upload -->
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+              <!-- Count Needed (3 cols) -->
+              <div class="sm:col-span-3">
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Count Needed <span class="text-red-500">*</span>
+                </label>
+                <div class="flex items-center gap-1">
+                  <button type="button" onclick="adjustCount('staff-text-comp-count', -1)" class="w-8 h-8 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 font-black text-sm flex items-center justify-center cursor-pointer transition">-</button>
+                  <input 
+                    type="number" 
+                    id="staff-text-comp-count" 
+                    min="1" 
+                    value="1" 
+                    class="w-full text-xs p-2 text-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-black"
+                    required
+                  >
+                  <button type="button" onclick="adjustCount('staff-text-comp-count', 1)" class="w-8 h-8 rounded-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 text-blue-700 font-black text-sm flex items-center justify-center cursor-pointer transition">+</button>
+                </div>
+              </div>
+
+              <!-- Reason (5 cols) -->
+              <div class="sm:col-span-5">
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Reason <span class="text-slate-400 font-normal">(Why needed)</span>
+                </label>
+                <input 
+                  type="text" 
+                  id="staff-text-comp-reason" 
+                  placeholder="e.g. For urgent client assembly / replacement" 
+                  class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-blue-500"
+                >
+              </div>
+
+              <!-- Image (4 cols) -->
+              <div class="sm:col-span-4">
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Component Image
+                </label>
+                <div class="flex items-center gap-2">
+                  <label class="flex-1 cursor-pointer flex items-center justify-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-blue-400 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 shadow-xs truncate">
+                    <i data-lucide="image" class="w-3.5 h-3.5 text-blue-500 flex-shrink-0"></i>
+                    <span id="staff-text-img-label" class="truncate text-[11px]">Upload Image</span>
+                    <input type="file" id="staff-text-comp-image-file" accept="image/*" class="hidden">
+                  </label>
+                  <div id="staff-text-img-preview-wrap" class="hidden w-8 h-8 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 flex-shrink-0 bg-slate-100">
+                    <img id="staff-text-img-preview" src="" class="w-full h-full object-cover">
+                  </div>
+                  <input type="hidden" id="staff-text-comp-image-data" value="">
+                </div>
+              </div>
+            </div>
+
+            <!-- Action: Add to List Button -->
+            <div class="pt-1 flex items-center justify-between">
+              <span class="text-[11px] text-slate-400">Fill in component and click "+ Add to List":</span>
+              <button 
+                type="button" 
+                onclick="staffAddCompToList()" 
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>+ Add to List</span>
+              </button>
+            </div>
+          </form>
+
+          <!-- THE ASK COMPONENTS LIST ("make like list") -->
+          <div class="space-y-2 pt-1">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <i data-lucide="list-checks" class="w-4 h-4 text-emerald-600"></i>
+                <span>Components to Ask Admin (<span id="staff-ask-list-count">0</span> items)</span>
+              </h4>
+              <button 
+                type="button" 
+                onclick="staffClearAskList()" 
+                id="staff-ask-clear-btn" 
+                class="hidden text-[11px] text-red-500 hover:underline font-bold cursor-pointer"
+              >
+                Clear List
+              </button>
+            </div>
+
+            <!-- Table / Cards List of Components to Ask -->
+            <div id="staff-ask-items-list-container" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+              <!-- Populated dynamically: if empty, shows placeholder; when items added, shows beautiful list rows -->
+            </div>
+          </div>
+
+          <!-- Send Request to Admin Button -->
+          <button 
+            type="button" 
+            onclick="staffSubmitAskListToAdmin()" 
+            id="staff-submit-ask-btn"
+            class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer transition"
+          >
+            <i data-lucide="send" class="w-4 h-4"></i>
+            <span id="staff-submit-btn-text">Send Request to Admin</span>
+          </button>
+
+          <!-- Staff Recent Requests Preview inside Modal -->
+          <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+            <h4 class="text-xs font-black uppercase tracking-wider text-slate-500 mb-2 flex items-center justify-between">
+              <span>My Requests to Admin</span>
+              <span class="text-[10px] text-slate-400 font-normal">Waiting / Sent Status</span>
+            </h4>
+            <div id="staff-modal-requests-list" class="space-y-2">
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: ADMIN VIEW (Admin Reviews Requests & Sends Components) -->
+        <div id="admin-send-section" class="space-y-3 hidden">
+          <!-- Admin Tabs -->
+          <div class="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+            <button 
+              type="button" 
+              onclick="switchAdminAskTab('pending')" 
+              id="admin-ask-tab-btn-pending"
+              class="admin-ask-subtab flex-1 py-1.5 px-3 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm flex items-center justify-center gap-1.5 transition"
+            >
+              <i data-lucide="inbox" class="w-3.5 h-3.5"></i>
+              <span>Staff Requests</span>
+              <span id="admin-tab-pending-badge" class="px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[9px] font-black">0</span>
+            </button>
+            <button 
+              type="button" 
+              onclick="switchAdminAskTab('direct')" 
+              id="admin-ask-tab-btn-direct"
+              class="admin-ask-subtab flex-1 py-1.5 px-3 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 transition flex items-center justify-center gap-1.5"
+            >
+              <i data-lucide="send" class="w-3.5 h-3.5"></i>
+              <span>Direct Send to Office</span>
+            </button>
+            <button 
+              type="button" 
+              onclick="switchAdminAskTab('history')" 
+              id="admin-ask-tab-btn-history"
+              class="admin-ask-subtab flex-1 py-1.5 px-3 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 transition flex items-center justify-center gap-1.5"
+            >
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+              <span>Sent History</span>
+            </button>
+          </div>
+
+          <!-- Tab Content 1: Pending Staff Requests to Send -->
+          <div id="admin-ask-tab-content-pending" class="space-y-2">
+            <div id="pending-asks-container" class="space-y-2">
+              <!-- Rendered dynamically by renderAskPanel() with "Send Component" action buttons -->
+            </div>
+          </div>
+
+          <!-- Tab Content 2: Admin Direct Send Form -->
+          <div id="admin-ask-tab-content-direct" class="hidden space-y-3">
+            <form id="admin-direct-send-form" onsubmit="handleAdminDirectSendSubmit(event)" class="space-y-3.5 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60">
+              <div class="p-3 bg-purple-50 dark:bg-purple-950/40 rounded-xl border border-purple-200 dark:border-purple-900 text-xs text-purple-800 dark:text-purple-300 flex items-center gap-2">
+                <i data-lucide="truck" class="w-4 h-4 flex-shrink-0 text-purple-600"></i>
+                <span>Direct Dispatch: Admin sends inventory components directly to any branch office.</span>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Destination Office</label>
+                  <select id="admin-direct-office-select" onchange="syncAdminDirectStaffName()" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-purple-500 font-semibold">
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Staff In-Charge</label>
+                  <input type="text" id="admin-direct-staff-input" readonly class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 font-bold">
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Select Components to Send to this Branch:
+                </label>
+                <div id="admin-direct-component-picker" class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Dispatch Memo / Note</label>
+                <input type="text" id="admin-direct-note-input" placeholder="e.g. Stock sent by Admin for upcoming projects" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+              </div>
+              <button type="submit" class="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer">
+                <i data-lucide="package-check" class="w-4 h-4"></i>
+                <span>Send Components to Office</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Tab Content 3: Sent / Dispatched History -->
+          <div id="admin-ask-tab-content-history" class="hidden space-y-2">
+            <div id="admin-dispatched-history-container" class="space-y-2">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: "MOVING"= -->
+  <!-- MODAL: "MOVING" (Inter-Office Stock Transfer) -->
+  <!-- ======================================================== -->
+  <div id="modal-moving" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+          <i data-lucide="arrow-left-right" class="w-5 h-5 text-indigo-600"></i>
+          MOVING — Transfer Between Offices
+        </h3>
+        <button onclick="closeModal('modal-moving')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="move-form" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Component to Move</label>
+          <select id="move-component-select" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">From (Source)</label>
+            <select id="move-from-select" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">To (Destination)</label>
+            <select id="move-to-select" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            </select>
+          </div>
+        </div>
+
+        <div id="move-available-label" class="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 p-2 rounded-lg">
+          Available at Source Office: -
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Count to Move</label>
+          <input type="number" id="move-count-input" min="1" required placeholder="e.g. 15" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Movement Note / Waybill</label>
+          <input type="text" id="move-note-input" placeholder="e.g. Dispatched via courier / batch dispatch" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('modal-moving')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 text-xs font-semibold bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700">
+            Confirm Move
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: "RECEIVED" (Stock In) -->
+  <!-- ======================================================== -->
+  <div id="modal-received" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+          <i data-lucide="package-plus" class="w-5 h-5 text-emerald-600"></i>
+          RECEIVED — Receive Inward Stock
+        </h3>
+        <button onclick="closeModal('modal-received')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="received-form" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Component</label>
+          <select id="received-component-select" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Receiving Office</label>
+          <select id="received-office-select" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Received Count (Units)</label>
+          <input type="number" id="received-count-input" min="1" required placeholder="e.g. 50" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Supplier / PO Reference</label>
+          <input type="text" id="received-note-input" placeholder="e.g. Invoice #9910 from Vendor" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('modal-received')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg shadow hover:bg-emerald-700">
+            Add to Stock
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: "HISTORY" (Movement and Audit Trail) -->
+  <!-- ======================================================== -->
+  <div id="modal-history" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+        <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+          <i data-lucide="history" class="w-5 h-5 text-amber-500"></i>
+          Movement & Requisition History
+        </h3>
+        <button onclick="closeModal('modal-history')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto">
+        <table class="w-full text-left text-xs whitespace-nowrap">
+          <thead class="bg-slate-100 dark:bg-slate-800 text-slate-600 font-semibold">
+            <tr>
+              <th class="py-2.5 px-3">Date</th>
+              <th class="py-2.5 px-3">Type</th>
+              <th class="py-2.5 px-3">Component</th>
+              <th class="py-2.5 px-3">Route</th>
+              <th class="py-2.5 px-3 text-center">Count</th>
+              <th class="py-2.5 px-3">Staff</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: "NEW" — COMPLETE ADMIN DATA MANAGEMENT SUITE -->
+  <!-- ======================================================== -->
+  <div id="modal-new" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 max-h-[92vh] flex flex-col">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+        <div>
+          <h3 class="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+            <i data-lucide="plus-circle" class="w-5 h-5 text-purple-600"></i>
+            Admin Data Management Suite
+          </h3>
+          <p class="text-xs text-slate-400">Add Components, Office Pins, Staff, and update stock counts</p>
+        </div>
+        <button onclick="closeModal('modal-new')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Navigation Tabs inside "New" -->
+      <div class="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex-shrink-0 overflow-x-auto">
+        <button onclick="switchNewTab('comp')" data-newtab="comp" class="new-tab-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-blue-600 text-white shadow-sm whitespace-nowrap">
+          <i data-lucide="cpu" class="w-3.5 h-3.5"></i> + Component
+        </button>
+        <button onclick="switchNewTab('office')" data-newtab="office" class="new-tab-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 whitespace-nowrap">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> + Office Pin
+        </button>
+        <button onclick="switchNewTab('staff')" data-newtab="staff" class="new-tab-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 whitespace-nowrap">
+          <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> + Staff
+        </button>
+        <button onclick="switchNewTab('stock')" data-newtab="stock" class="new-tab-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 whitespace-nowrap">
+          <i data-lucide="sliders" class="w-3.5 h-3.5"></i> Set Stock
+        </button>
+        <button onclick="switchNewTab('bulk')" data-newtab="bulk" class="new-tab-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 whitespace-nowrap">
+          <i data-lucide="hard-drive" class="w-3.5 h-3.5"></i> Local Backup
+        </button>
+        <button onclick="switchNewTab('mongo')" data-newtab="mongo" class="new-tab-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 whitespace-nowrap">
+          <i data-lucide="database" class="w-3.5 h-3.5 text-emerald-500"></i> 🍃 MongoDB Atlas
+        </button>
+      </div>
+
+      <!-- Tab Contents Container -->
+      <div class="flex-1 overflow-y-auto pr-1">
+
+        <!-- ============================================== -->
+        <!-- TAB 1: ADD COMPONENT (with Image Upload & Initial Stocks) -->
+        <!-- ============================================== -->
+        <div id="new-tab-content-comp" class="space-y-4">
+          <form id="new-comp-form" class="space-y-3.5">
+            
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Component Code / SKU *</label>
+                <input type="text" id="new-comp-code" required placeholder="e.g. AUR-STM32" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Component Name *</label>
+                <input type="text" id="new-comp-name" required placeholder="e.g. STM32 ARM Cortex-M4 Board" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Category</label>
+                <input type="text" id="new-comp-cat" placeholder="e.g. Microcontrollers, Sensors" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Unit</label>
+                <input type="text" id="new-comp-unit" value="pcs" placeholder="pcs, pack" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Min. Alert Stock</label>
+                <input type="number" id="new-comp-min" value="15" min="0" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+              </div>
+            </div>
+
+            <!-- Image Upload & Preview -->
+            <div class="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-2">
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Component Photo / Image:
+              </label>
+              
+              <div class="flex items-center gap-3">
+                <label class="cursor-pointer px-3 py-2 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 transition">
+                  <i data-lucide="upload" class="w-4 h-4"></i> Upload Photo from Device
+                  <input type="file" id="new-comp-file" accept="image/*" class="hidden">
+                </label>
+                <span class="text-xs text-slate-400">or paste URL below</span>
+              </div>
+
+              <input type="text" id="new-comp-img" placeholder="https://example.com/component-image.jpg" class="w-full text-xs p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+
+              <!-- Live Preview Thumbnail -->
+              <div id="new-comp-img-preview-container" class="hidden flex items-center gap-2 pt-1">
+                <img id="new-comp-img-preview" src="" class="w-12 h-12 rounded-lg object-cover border border-slate-300">
+                <span class="text-xs text-emerald-600 font-semibold">Image loaded successfully!</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Description / Technical Notes</label>
+              <textarea id="new-comp-desc" rows="2" placeholder="Specifications, pinouts, or warehouse notes..." class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"></textarea>
+            </div>
+
+            <!-- Initial Stock Matrix per Office -->
+            <div class="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div class="flex items-center justify-between">
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Initial Stock Count in Each Office:
+                </label>
+                <span class="text-[10px] text-slate-400">Sets starting inventory</span>
+              </div>
+              <div id="new-comp-stock-matrix" class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                <!-- Dynamically populated in app.js -->
+              </div>
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5">
+              <i data-lucide="plus" class="w-4 h-4"></i> Save Component & Distribute Stock
+            </button>
+          </form>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 2: ADD OFFICE PIN (Clean 5-Field Form) -->
+        <!-- ============================================== -->
+        <div id="new-tab-content-office" class="hidden space-y-4">
+          <form id="new-off-form" class="space-y-4">
+            
+            <div class="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-2xl border border-blue-200 dark:border-blue-900/60 text-xs text-blue-700 dark:text-blue-300">
+              <span class="font-bold block mb-0.5">Quick Office Creation:</span>
+              Enter your office name, paste your Google location link, provide staff details, and save. The app automatically detects GPS coordinates and plots your pin on the map!
+            </div>
+
+            <!-- 1. Office / Branch Name -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Office / Branch Name *
+              </label>
+              <input 
+                type="text" 
+                id="new-off-name" 
+                required 
+                placeholder="e.g. Chennai Central Branch / Madurai Hub" 
+                class="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              >
+            </div>
+
+            <!-- 2. Google Location Link -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                <span>Google Location Link *</span>
+                <span class="text-[10px] text-slate-400 font-normal">Google Maps link or @lat,lng</span>
+              </label>
+              <input 
+                type="text" 
+                id="new-off-location-link" 
+                required 
+                placeholder="Paste Google Maps link (e.g. https://maps.app.goo.gl/... or @13.0827,80.2707)" 
+                class="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono focus:ring-2 focus:ring-blue-500"
+              >
+              <!-- Live Coordinate Detection Pill -->
+              <div id="new-off-link-status" class="mt-1.5 text-[11px] font-medium text-slate-500 flex items-center gap-1.5">
+                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-blue-500"></i>
+                <span id="new-off-coords-preview">Paste Google Maps URL to auto-detect GPS pin</span>
+              </div>
+            </div>
+
+            <!-- 3. Staff Name -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Staff Name *
+              </label>
+              <input 
+                type="text" 
+                id="new-off-staff-name" 
+                required 
+                placeholder="e.g. K. Thirulingeshwar" 
+                class="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium focus:ring-2 focus:ring-blue-500"
+              >
+            </div>
+
+            <!-- 4. Staff Number & 5. Email ID -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Staff Number (Phone) *
+                </label>
+                <input 
+                  type="tel" 
+                  id="new-off-staff-phone" 
+                  required 
+                  placeholder="e.g. +91 98400 12345" 
+                  class="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium focus:ring-2 focus:ring-blue-500"
+                >
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Email ID *
+                </label>
+                <input 
+                  type="email" 
+                  id="new-off-staff-email" 
+                  required 
+                  placeholder="e.g. branch.lead@aurora.com" 
+                  class="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium focus:ring-2 focus:ring-blue-500"
+                >
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+              type="submit" 
+              class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer transition"
+            >
+              <i data-lucide="map-pin" class="w-4 h-4"></i>
+              <span>Save & Plot Office Pin on Map</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 3: ADD STAFF MEMBER -->
+        <!-- ============================================== -->
+        <div id="new-tab-content-staff" class="hidden space-y-4">
+          <form id="new-staff-form" class="space-y-3.5">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Staff Full Name *</label>
+                <input type="text" id="new-staff-name" required placeholder="e.g. A. Rajesh Kumar" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Role / Designation</label>
+                <input type="text" id="new-staff-role" placeholder="e.g. Hardware Lead, Plant Supervisor" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Email ID</label>
+                <input type="email" id="new-staff-email" placeholder="rajesh.k@aurora.com" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
+                <input type="text" id="new-staff-phone" placeholder="+91 98410 99887" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Assign to Office / Branch</label>
+                <select id="new-staff-office-select" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold">
+                  <!-- Dynamically populated in app.js -->
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Staff Login Password *</label>
+                <input type="text" id="new-staff-password" value="staff123" required placeholder="e.g. staff123" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold text-blue-600 dark:text-blue-400">
+              </div>
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer">
+              <i data-lucide="user-plus" class="w-4 h-4"></i> Save Staff Member & Activate Login
+            </button>
+          </form>
+
+          <!-- Staff Logins Directory (Given by Admin) -->
+          <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
+              <i data-lucide="key" class="w-3.5 h-3.5 text-amber-500"></i>
+              Staff Login Directory (Credentials given to Staff)
+            </h4>
+            <p class="text-[11px] text-slate-400 mb-2">Staff use these credentials to access their branch portal to view components and ask for parts:</p>
+            <div id="staff-directory-list" class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+              <!-- Rendered dynamically in app.js -->
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 4: DIRECT STOCK ENTRY / ADJUSTMENT -->
+        <!-- ============================================== -->
+        <div id="new-tab-content-stock" class="hidden space-y-4">
+          <form id="quick-stock-form" class="space-y-3.5">
+            <div class="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-900/60 text-xs text-amber-800 dark:text-amber-300">
+              <strong>Direct Stock Entry Tool:</strong> Set the exact physical quantity of any component in any office without going through a transfer.
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Select Office</label>
+                <select id="quick-stock-office-select" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Select Component</label>
+                <select id="quick-stock-comp-select" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                </select>
+              </div>
+            </div>
+
+            <div id="quick-stock-current-label" class="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 p-2.5 rounded-xl">
+              Current Stock in this Office: -
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">New Exact Stock Count *</label>
+              <input type="number" id="quick-stock-count-input" min="0" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-base">
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Reason / Reference Note</label>
+              <input type="text" id="quick-stock-note-input" placeholder="e.g. Physical inventory audit recount" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5">
+              <i data-lucide="check" class="w-4 h-4"></i> Update Stock Count
+            </button>
+          </form>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 6: MONGODB ATLAS CLOUD DATABASE -->
+        <!-- ============================================== -->
+        <div id="new-tab-content-mongo" class="hidden space-y-4">
+          <div class="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                <h4 class="font-bold text-sm text-emerald-900 dark:text-emerald-100 flex items-center gap-1.5">
+                  <span>MongoDB Atlas Cloud Database</span>
+                </h4>
+              </div>
+              <span id="mongo-modal-status-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                CONNECTED
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div class="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-emerald-200/60 dark:border-emerald-900">
+                <span class="text-[10px] text-slate-400 block font-semibold">Cluster Host</span>
+                <span class="font-mono font-bold text-slate-800 dark:text-slate-100 truncate block">cluster0.pavq1lb.mongodb.net</span>
+              </div>
+              <div class="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-emerald-200/60 dark:border-emerald-900">
+                <span class="text-[10px] text-slate-400 block font-semibold">Database Name</span>
+                <span class="font-mono font-bold text-slate-800 dark:text-slate-100 block">aurora_loc_db</span>
+              </div>
+            </div>
+
+            <!-- Live Collection Counts -->
+            <div class="p-3 bg-white dark:bg-slate-900 rounded-xl border border-emerald-200/60 dark:border-emerald-900 space-y-2">
+              <span class="text-[10px] uppercase font-black tracking-wider text-slate-400 block">Cloud Collections & Document Counts:</span>
+              <div id="mongo-collections-stats" class="grid grid-cols-3 gap-2 text-center text-xs">
+                <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                  <span class="text-[10px] text-slate-400 block">Offices</span>
+                  <span id="mongo-count-offices" class="font-black text-sm text-blue-600">0</span>
+                </div>
+                <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                  <span class="text-[10px] text-slate-400 block">Staff</span>
+                  <span id="mongo-count-staff" class="font-black text-sm text-emerald-600">0</span>
+                </div>
+                <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                  <span class="text-[10px] text-slate-400 block">Components</span>
+                  <span id="mongo-count-components" class="font-black text-sm text-purple-600">0</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center gap-2 pt-2">
+              <button type="button" onclick="syncToMongoDB(true)" class="w-full sm:flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 cursor-pointer">
+                <i data-lucide="cloud-upload" class="w-4 h-4"></i>
+                <span>Push State to MongoDB</span>
+              </button>
+              <button type="button" onclick="syncFromMongoDB(true)" class="w-full sm:flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 cursor-pointer">
+                <i data-lucide="cloud-download" class="w-4 h-4"></i>
+                <span>Pull from MongoDB</span>
+              </button>
+              <button type="button" onclick="checkMongoConnection(true)" class="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer" title="Test Ping Latency">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span>Test Ping</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 5: BULK DATA, BACKUP & CSV EXPORT -->
+        <!-- ============================================== -->
+        <div id="new-tab-content-bulk" class="hidden space-y-4">
+          <div class="space-y-3">
+            
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+              <div>
+                <h4 class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
+                  Export Inventory Report (Excel / CSV)
+                </h4>
+                <p class="text-[11px] text-slate-400">Generates a full spreadsheet table of all components and their counts across each office.</p>
+              </div>
+              <button onclick="exportToCSV()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm whitespace-nowrap">
+                Export CSV
+              </button>
+            </div>
+
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+              <div>
+                <h4 class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <i data-lucide="download" class="w-4 h-4 text-blue-600"></i>
+                  Backup Database (JSON)
+                </h4>
+                <p class="text-[11px] text-slate-400">Download a full backup file containing all offices, pins, staff, components, and transactions.</p>
+              </div>
+              <button onclick="exportDataJSON()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm whitespace-nowrap">
+                Backup JSON
+              </button>
+            </div>
+
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+              <div>
+                <h4 class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <i data-lucide="upload" class="w-4 h-4 text-purple-600"></i>
+                  Restore Database from JSON
+                </h4>
+                <p class="text-[11px] text-slate-400">Load all records from a previously exported backup file.</p>
+              </div>
+              <button onclick="triggerImportJSON()" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm whitespace-nowrap">
+                Restore JSON
+              </button>
+            </div>
+
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+              <div>
+                <h4 class="text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  Clear All Database Records
+                </h4>
+                <p class="text-[11px] text-slate-400">Purges all office pins, staff, components, and transactions so you can start completely fresh.</p>
+              </div>
+              <button onclick="clearAllUserData()" class="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-sm whitespace-nowrap">
+                Clear All Data
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Hidden File Input for JSON Restore -->
+  <input type="file" id="import-file-input" accept=".json" class="hidden">
+
+  <!-- Toast Notification Box -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs font-semibold border border-slate-700">
+      <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+      <span id="toast-msg">Action performed</span>
+    </div>
+  </div>
+
+  <!-- Main JavaScript -->
+  <script src="app.js"></script>
+</body>
+</html>
