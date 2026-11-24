@@ -1,6 +1,9 @@
 # AURORA LOC APP — List of Components & Office Tracking
 > **Clean Database Ready for Live Company Data Entry**
 
+- **Live GitHub Pages URL**: [https://thirulingeshwar.github.io/aurora-loc/](https://thirulingeshwar.github.io/aurora-loc/)
+- **GitHub Repository**: [https://github.com/thirulingeshwar/aurora-loc](https://github.com/thirulingeshwar/aurora-loc)
+
 ---
 
 ## 📐 Blueprint Implementation Overview
