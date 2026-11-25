@@ -1176,11 +1176,10 @@ function renderStaffPortal() {
     } else {
       grid.innerHTML = `
         <div class="space-y-2.5">
-          <!-- Desktop Table Header matching user prompt: Image, Component Name, Component Number, Count Needed, Reason, Action -->
+          <!-- Desktop Table Header: Component Name, Component Code, Count Needed, Reason, Action -->
           <div class="hidden md:grid md:grid-cols-12 gap-3 px-4 py-2.5 bg-slate-100/90 dark:bg-slate-800/80 rounded-2xl text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700/80 items-center">
-            <div class="col-span-1 text-center">Image</div>
-            <div class="col-span-3">Component Name</div>
-            <div class="col-span-2">Component Number</div>
+            <div class="col-span-4">Component Name & Details</div>
+            <div class="col-span-2">Component Code</div>
             <div class="col-span-2 text-center">Count Needed</div>
             <div class="col-span-3">Reason</div>
             <div class="col-span-1 text-right">Action</div>
@@ -1192,18 +1191,8 @@ function renderStaffPortal() {
               const stock = getStock(comp.id, office.id);
               return `
                 <div class="staff-comp-row bg-white dark:bg-slate-900 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 transition shadow-xs p-3.5 flex flex-col md:grid md:grid-cols-12 gap-3 items-center text-xs">
-                  <!-- 1. Image -->
-                  <div class="col-span-1 flex justify-center flex-shrink-0">
-                    <div class="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center flex-shrink-0 shadow-xs">
-                      ${comp.image 
-                        ? `<img src="${comp.image}" alt="${escapeHtml(comp.name)}" class="w-full h-full object-cover">` 
-                        : `<span class="text-[9px] font-bold text-slate-400">IMAGE</span>`
-                      }
-                    </div>
-                  </div>
-
-                  <!-- 2. Component Name -->
-                  <div class="col-span-3 min-w-0 w-full pr-1">
+                  <!-- 1. Component Name -->
+                  <div class="col-span-4 min-w-0 w-full pr-1">
                     <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider md:hidden block">Component Name</span>
                     <h4 class="font-extrabold text-slate-900 dark:text-white text-xs truncate" title="${escapeHtml(comp.name)}">
                       ${escapeHtml(comp.name)}
@@ -1338,9 +1327,7 @@ function renderStaffPortal() {
                 return `
                   <div class="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/80 gap-3">
                     <div class="flex items-center gap-3 min-w-0">
-                      <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex-shrink-0 flex items-center justify-center shadow-xs">
-                        ${comp && comp.image ? `<img src="${comp.image}" class="w-full h-full object-cover">` : `<span class="text-[9px] font-bold text-slate-400">PART</span>`}
-                      </div>
+                      <i data-lucide="cpu" class="w-5 h-5 text-purple-500 flex-shrink-0"></i>
                       <div class="min-w-0">
                         <div class="flex items-center gap-2">
                           <span class="font-bold text-slate-900 dark:text-white truncate">${escapeHtml(comp ? comp.name : 'Unknown Component')}</span>
@@ -1869,27 +1856,19 @@ function renderPerOfficeComponentList() {
     }
 
     return `
-      <div class="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 hover:shadow-sm transition">
-        <div class="flex items-center gap-3 min-w-0">
-          <div class="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-slate-700">
-            <img 
-              src="${comp.image}" 
-              alt="${escapeHtml(comp.name)}"
-              class="w-full h-full object-cover"
-              onerror="this.src='https://images.unsplash.com/photo-1518770660439-4636190af475?w=200&auto=format&fit=crop&q=80'"
-            />
+      <div class="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 hover:shadow-xs transition">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-md border border-blue-200/80 dark:border-blue-900/60">${escapeHtml(comp.code)}</span>
+            <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">${escapeHtml(comp.category || 'General')}</span>
           </div>
-          <div class="min-w-0">
-            <span class="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400 block">${escapeHtml(comp.code)}</span>
-            <h4 class="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate" title="${escapeHtml(comp.name)}">${escapeHtml(comp.name)}</h4>
-            <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-              <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">${escapeHtml(comp.category || 'General')}</span>
-              <span class="text-[10px] text-slate-300 dark:text-slate-600">•</span>
-              <span class="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md font-medium">
-                <i data-lucide="calendar" class="w-3 h-3 text-emerald-500"></i>
-                <span>Bought: <strong>${formatDateTime(comp.createdAt)}</strong></span>
-              </span>
-            </div>
+          <h4 class="font-bold text-sm text-slate-900 dark:text-white truncate mt-1" title="${escapeHtml(comp.name)}">${escapeHtml(comp.name)}</h4>
+          <div class="flex items-center gap-2 mt-1 flex-wrap">
+            <span class="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md font-medium">
+              <i data-lucide="calendar" class="w-3 h-3 text-emerald-500"></i>
+              <span>Bought: <strong>${formatDateTime(comp.createdAt)}</strong></span>
+            </span>
+            ${comp.description ? `<span class="text-[11px] text-slate-400 truncate max-w-sm">&mdash; ${escapeHtml(comp.description)}</span>` : ''}
           </div>
         </div>
 
@@ -2045,9 +2024,7 @@ function renderStaffAskItemsList() {
   container.innerHTML = currentStaffAskItems.map((it) => `
     <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs text-xs gap-3">
       <div class="flex items-center gap-3 min-w-0 flex-1">
-        <div class="w-11 h-11 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex-shrink-0 flex items-center justify-center shadow-xs">
-          <img src="${it.image || DEFAULT_COMP_IMG}" alt="${escapeHtml(it.componentName)}" class="w-full h-full object-cover">
-        </div>
+        <i data-lucide="cpu" class="w-5 h-5 text-blue-500 flex-shrink-0"></i>
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
             <h5 class="font-extrabold text-slate-900 dark:text-white truncate">${escapeHtml(it.componentName)}</h5>
@@ -2348,9 +2325,7 @@ function renderAskPanel() {
                 return `
                   <div class="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60 gap-3 text-xs">
                     <div class="flex items-center gap-3 min-w-0">
-                      <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center flex-shrink-0 border border-slate-300 dark:border-slate-600">
-                        <img src="${img}" class="w-full h-full object-cover">
-                      </div>
+                      <i data-lucide="cpu" class="w-5 h-5 text-purple-500 flex-shrink-0"></i>
                       <div class="min-w-0">
                         <div class="flex items-center gap-2">
                           <span class="font-extrabold text-slate-900 dark:text-white">${escapeHtml(name)}</span>
@@ -2446,7 +2421,7 @@ function renderAskPanel() {
       directCompPicker.innerHTML = state.components.map(comp => `
         <div class="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
           <div class="flex items-center gap-2">
-            <img src="${comp.image}" class="w-7 h-7 rounded object-cover">
+            <i data-lucide="cpu" class="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0"></i>
             <div>
               <span class="font-bold text-slate-800 dark:text-slate-100 block">${escapeHtml(comp.name)}</span>
               <span class="text-[10px] text-slate-400 font-mono">${escapeHtml(comp.code)}</span>
@@ -2804,7 +2779,7 @@ function renderHistoryView() {
         <td class="py-2.5 px-3">${typeBadge}</td>
         <td class="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-100">
           <div class="flex items-center gap-2">
-            ${comp ? `<img src="${comp.image}" class="w-6 h-6 rounded object-cover flex-shrink-0">` : ''}
+            <i data-lucide="cpu" class="w-4 h-4 text-blue-500 flex-shrink-0"></i>
             <span>${escapeHtml(comp ? comp.name : 'Unknown Component')}</span>
           </div>
         </td>
@@ -3017,7 +2992,6 @@ function handleNewComponentSubmit(e) {
 
   saveData();
   document.getElementById('new-comp-form').reset();
-  updateAutoComponentImagePreview();
   closeModal('modal-new');
   renderApp();
   renderSketchMap();
@@ -3718,15 +3692,6 @@ function setupEventListeners() {
   window.addEventListener('resize', () => {
     if (leafletMap) leafletMap.invalidateSize();
   });
-
-  // Auto Component Image Finder: Live detection as user types Name or Code
-  const compNameInput = document.getElementById('new-comp-name');
-  const compCodeInput = document.getElementById('new-comp-code');
-  const compCatInput = document.getElementById('new-comp-cat');
-  
-  compNameInput?.addEventListener('input', updateAutoComponentImagePreview);
-  compCodeInput?.addEventListener('input', updateAutoComponentImagePreview);
-  compCatInput?.addEventListener('input', updateAutoComponentImagePreview);
 
   // Live Google Location Link Coordinate Detector
   const offLinkInput = document.getElementById('new-off-location-link');
