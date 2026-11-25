@@ -1031,41 +1031,35 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Category</label>
-                <input type="text" id="new-comp-cat" placeholder="e.g. Microcontrollers, Sensors" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                <input type="text" id="new-comp-cat" placeholder="e.g. Microcontrollers, Sensors, ICs" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
               </div>
               <div>
                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Unit</label>
-                <input type="text" id="new-comp-unit" value="pcs" placeholder="pcs, pack" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-              </div>
-              <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Min. Alert Stock</label>
-                <input type="number" id="new-comp-min" value="15" min="0" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                <input type="text" id="new-comp-unit" value="pcs" placeholder="pcs, pack, units" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
               </div>
             </div>
 
-            <!-- Image Upload & Preview -->
-            <div class="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-2">
-              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Component Photo / Image:
-              </label>
-              
-              <div class="flex items-center gap-3">
-                <label class="cursor-pointer px-3 py-2 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 transition">
-                  <i data-lucide="upload" class="w-4 h-4"></i> Upload Photo from Device
-                  <input type="file" id="new-comp-file" accept="image/*" class="hidden">
-                </label>
-                <span class="text-xs text-slate-400">or paste URL below</span>
+            <!-- Auto Component Image & Buy Date Live Preview -->
+            <div class="p-3.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-slate-50 dark:from-slate-800/90 dark:via-indigo-950/40 dark:to-slate-800/60 rounded-2xl border border-blue-200/80 dark:border-slate-700 flex items-center gap-3.5 shadow-xs">
+              <div class="w-14 h-14 rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-blue-200 dark:border-slate-700 flex items-center justify-center flex-shrink-0 shadow-xs">
+                <img id="new-comp-auto-img-preview" src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=200&auto=format&fit=crop&q=80" alt="Preview" class="w-full h-full object-cover">
               </div>
-
-              <input type="text" id="new-comp-img" placeholder="https://example.com/component-image.jpg" class="w-full text-xs p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-
-              <!-- Live Preview Thumbnail -->
-              <div id="new-comp-img-preview-container" class="hidden flex items-center gap-2 pt-1">
-                <img id="new-comp-img-preview" src="" class="w-12 h-12 rounded-lg object-cover border border-slate-300">
-                <span class="text-xs text-emerald-600 font-semibold">Image loaded successfully!</span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-blue-300">
+                  <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i>
+                  <span>Auto-Detected Image by Name & Code</span>
+                </div>
+                <p id="new-comp-auto-img-label" class="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 font-medium truncate">
+                  Type name or code above to auto-match image
+                </p>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/70 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <i data-lucide="clock" class="w-2.5 h-2.5"></i> Auto-saves Buy Date & Time
+                  </span>
+                </div>
               </div>
             </div>
 

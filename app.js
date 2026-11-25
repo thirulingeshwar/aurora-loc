@@ -3,8 +3,166 @@
 
 const STORAGE_KEY = 'aurora_loc_live_db_v1';
 const COMPANY_LOGO_URL = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQbyntK1DtKHhwrnfrzLvxdVPPO2jw_5-7yUwkLDhT1Og&s=10';
-const DEFAULT_COMP_IMG = 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=200&auto=format&fit=crop&q=80';
+const DEFAULT_COMP_IMG = 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop&q=80';
 let currentStaffAskItems = [];
+
+// =========================================================
+// SMART AUTOMATIC COMPONENT IMAGE FINDER & DATE FORMATTER
+// =========================================================
+
+function formatDateTime(isoString) {
+  if (!isoString) return 'Recently';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return 'Recently';
+    return d.toLocaleString('en-US', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (e) {
+    return 'Recently';
+  }
+}
+
+function generateComponentChipSvg(name, code) {
+  const safeCode = (code || 'PART').replace(/[<>&"']/g, '').substring(0, 14).toUpperCase();
+  const safeName = (name || 'Hardware').replace(/[<>&"']/g, '').substring(0, 16);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+    <rect width="200" height="200" rx="18" fill="#0f172a"/>
+    <path d="M20 50h30v30M180 50h-30v30M20 150h30v-30M180 150h-30v-30" stroke="#0ea5e9" stroke-width="2.5" fill="none" opacity="0.6"/>
+    <circle cx="100" cy="100" r="75" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+    <rect x="45" y="45" width="110" height="110" rx="12" fill="#020617" stroke="#38bdf8" stroke-width="2"/>
+    <circle cx="60" cy="60" r="3.5" fill="#38bdf8"/>
+    <text x="100" y="93" fill="#38bdf8" font-family="monospace, monospace" font-size="12" font-weight="bold" text-anchor="middle">${safeCode}</text>
+    <text x="100" y="113" fill="#cbd5e1" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="600" text-anchor="middle">${safeName}</text>
+    <text x="100" y="133" fill="#10b981" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="bold" text-anchor="middle">AURORA HARDWARE</text>
+  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
+const AUTO_COMPONENT_PATTERNS = [
+  // Microcontrollers & Dev Boards
+  { regex: /esp32|esp-32/i, label: 'ESP32 Wi-Fi + BT Dual-Core SoC', img: 'https://images.unsplash.com/photo-1553406830-ef2513450d76?w=400&auto=format&fit=crop&q=80' },
+  { regex: /esp8266|nodemcu/i, label: 'NodeMCU / ESP8266 IoT Board', img: 'https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=400&auto=format&fit=crop&q=80' },
+  { regex: /arduino|uno|mega|nano|atmega/i, label: 'Arduino Development Board', img: 'https://images.unsplash.com/photo-1608564697071-ddf911d81370?w=400&auto=format&fit=crop&q=80' },
+  { regex: /raspberry|rpi|pico|pi\s*4|pi\s*5/i, label: 'Raspberry Pi Single-Board Computer', img: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&auto=format&fit=crop&q=80' },
+  { regex: /stm32|nucleo|cortex|arm/i, label: 'STM32 ARM Cortex-M Board', img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop&q=80' },
+
+  // Displays
+  { regex: /oled|ssd1306|0\.96/i, label: 'OLED I2C Graphic Display', img: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&auto=format&fit=crop&q=80' },
+  { regex: /lcd|16x2|20x4|liquid\s*crystal/i, label: 'HD44780 Alphanumeric LCD', img: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&auto=format&fit=crop&q=80' },
+  { regex: /tft|touch\s*screen|nextion/i, label: 'Color TFT Touchscreen Display', img: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&auto=format&fit=crop&q=80' },
+  { regex: /7\s*segment|seven\s*segment|matrix/i, label: '7-Segment / LED Matrix Display', img: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&auto=format&fit=crop&q=80' },
+  { regex: /display|screen/i, label: 'Electronic Display Panel', img: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&auto=format&fit=crop&q=80' },
+
+  // Sensors
+  { regex: /ultrasonic|hc-?sr04|sonar/i, label: 'Ultrasonic Distance Sensor (HC-SR04)', img: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&auto=format&fit=crop&q=80' },
+  { regex: /dht11|dht22|dht|temperature|temp|thermistor|lm35/i, label: 'Temperature & Humidity Sensor', img: 'https://images.unsplash.com/photo-1584281722572-841f3914a2ff?w=400&auto=format&fit=crop&q=80' },
+  { regex: /pir|motion|hc-?sr501|radar/i, label: 'PIR Motion Detector Sensor', img: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=400&auto=format&fit=crop&q=80' },
+  { regex: /gyro|accelerometer|mpu-?6050|imu|adxl/i, label: 'MPU-6050 6-DOF IMU Sensor', img: 'https://images.unsplash.com/photo-1563770660439-4636190af475?w=400&auto=format&fit=crop&q=80' },
+  { regex: /gas|smoke|mq-?2|mq-?135|air\s*quality/i, label: 'MQ Gas & Smoke Sensor', img: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&auto=format&fit=crop&q=80' },
+  { regex: /ldr|light\s*sensor|photocell/i, label: 'Light Dependent Resistor (LDR)', img: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&auto=format&fit=crop&q=80' },
+  { regex: /rfid|rc522|nfc/i, label: 'RFID / NFC Proximity Reader', img: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&auto=format&fit=crop&q=80' },
+  { regex: /sound|microphone|mic|decibel/i, label: 'Sound Detection Sensor', img: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&auto=format&fit=crop&q=80' },
+  { regex: /sensor/i, label: 'Precision Sensor Module', img: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&auto=format&fit=crop&q=80' },
+
+  // Actuators & Motors
+  { regex: /servo|sg90|mg996/i, label: 'Micro Servo Motor Module', img: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400&auto=format&fit=crop&q=80' },
+  { regex: /stepper|nema|28byj/i, label: 'High-Torque Stepper Motor', img: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400&auto=format&fit=crop&q=80' },
+  { regex: /dc\s*motor|gear\s*motor|tt\s*motor/i, label: 'DC Geared Motor with Drive Shaft', img: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400&auto=format&fit=crop&q=80' },
+  { regex: /relay|relay\s*module/i, label: '5V Optocoupler Relay Module', img: 'https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?w=400&auto=format&fit=crop&q=80' },
+  { regex: /motor|actuator|solenoid/i, label: 'Electric Actuator / Motor Unit', img: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400&auto=format&fit=crop&q=80' },
+
+  // Power & Batteries
+  { regex: /18650|battery|lipo|lithium|cell/i, label: 'Rechargeable Lithium-Ion Cell', img: 'https://images.unsplash.com/photo-1619725002198-6a689b72f41d?w=400&auto=format&fit=crop&q=80' },
+  { regex: /tp4056|charger|bms/i, label: 'TP4056 Li-Ion Charging Board', img: 'https://images.unsplash.com/photo-1592659762303-90081d34b277?w=400&auto=format&fit=crop&q=80' },
+  { regex: /power\s*supply|smps|adapter|12v|5v/i, label: 'Regulated DC Power Supply', img: 'https://images.unsplash.com/photo-1592659762303-90081d34b277?w=400&auto=format&fit=crop&q=80' },
+  { regex: /buck|boost|lm2596|7805|ams1117|regulator/i, label: 'DC-DC Step-Down / Regulator', img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop&q=80' },
+
+  // Passives & ICs
+  { regex: /resistor/i, label: 'Metal Film Precision Resistors', img: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&auto=format&fit=crop&q=80' },
+  { regex: /capacitor/i, label: 'Electrolytic / Ceramic Capacitors', img: 'https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?w=400&auto=format&fit=crop&q=80' },
+  { regex: /led|rgb|neopixel|ws2812/i, label: 'Addressable RGB LED Module', img: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&auto=format&fit=crop&q=80' },
+  { regex: /diode|rectifier|zener/i, label: 'Semiconductor Diodes Pack', img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop&q=80' },
+  { regex: /transistor|mosfet|bjt/i, label: 'Power MOSFET / Transistor Switch', img: 'https://images.unsplash.com/photo-1591488320449-011701bb6704?w=400&auto=format&fit=crop&q=80' },
+  { regex: /ic|chip|processor|microchip|timer/i, label: 'Integrated Circuit DIP/SOIC', img: 'https://images.unsplash.com/photo-1591488320449-011701bb6704?w=400&auto=format&fit=crop&q=80' },
+
+  // Prototyping
+  { regex: /breadboard|perfboard|pcb/i, label: 'Solderless Prototyping Breadboard', img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop&q=80' },
+  { regex: /jumper|wire|cable|connector|dupont/i, label: 'Dupont Jumper Wire Harness', img: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&auto=format&fit=crop&q=80' },
+  { regex: /solder|soldering/i, label: 'Soldering Workstation & Accessories', img: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&auto=format&fit=crop&q=80' },
+  { regex: /multimeter|tester/i, label: 'Digital Multimeter Instrument', img: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&auto=format&fit=crop&q=80' },
+
+  // Computers & IT
+  { regex: /cpu|intel|amd|ryzen|core\s*i/i, label: 'High-Performance CPU Processor', img: 'https://images.unsplash.com/photo-1591488320449-011701bb6704?w=400&auto=format&fit=crop&q=80' },
+  { regex: /gpu|graphics|rtx|gtx|nvidia/i, label: 'Dedicated Graphics Processing Unit', img: 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=400&auto=format&fit=crop&q=80' },
+  { regex: /ram|ddr|memory/i, label: 'High-Speed DDR RAM Module', img: 'https://images.unsplash.com/photo-1562976540-1502c2145186?w=400&auto=format&fit=crop&q=80' },
+  { regex: /ssd|nvme|m\.2/i, label: 'NVMe Solid-State Drive', img: 'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=400&auto=format&fit=crop&q=80' },
+  { regex: /hard\s*disk|hdd|drive/i, label: 'Magnetic Hard Disk Storage', img: 'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=400&auto=format&fit=crop&q=80' },
+  { regex: /motherboard|mainboard/i, label: 'Computer Motherboard / System Board', img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop&q=80' },
+  { regex: /monitor|screen/i, label: 'Ultra-Clear Display Monitor', img: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&auto=format&fit=crop&q=80' },
+  { regex: /keyboard/i, label: 'Computer Input Keyboard', img: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&auto=format&fit=crop&q=80' },
+  { regex: /mouse/i, label: 'Optical Precision Mouse', img: 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=400&auto=format&fit=crop&q=80' },
+  { regex: /laptop|notebook/i, label: 'Business Laptop Computer', img: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400&auto=format&fit=crop&q=80' },
+  { regex: /router|switch|wifi/i, label: 'Gigabit Network Router / Switch', img: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=400&auto=format&fit=crop&q=80' },
+  { regex: /camera|webcam/i, label: 'HD Video Conference Camera', img: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400&auto=format&fit=crop&q=80' },
+  { regex: /headphone|headset|earphone/i, label: 'Stereo Audio Headset', img: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&auto=format&fit=crop&q=80' },
+  { regex: /printer|3d\s*printer/i, label: 'High-Precision 3D Printer / Device', img: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&auto=format&fit=crop&q=80' }
+];
+
+function findAutoComponentImageDetails(name, code, category) {
+  const query = `${name || ''} ${code || ''} ${category || ''}`.trim().toLowerCase();
+  
+  if (!query) {
+    return {
+      url: DEFAULT_COMP_IMG,
+      matchLabel: 'General Component Photo'
+    };
+  }
+
+  for (const item of AUTO_COMPONENT_PATTERNS) {
+    if (item.regex.test(query)) {
+      return {
+        url: item.img,
+        matchLabel: item.label
+      };
+    }
+  }
+
+  // Fallback: Generate bespoke circuit chip SVG badge with code & name
+  return {
+    url: generateComponentChipSvg(name, code),
+    matchLabel: `Custom Silicon Chip Badge (${code || name || 'Part'})`
+  };
+}
+
+function findAutoComponentImage(name, code, category) {
+  return findAutoComponentImageDetails(name, code, category).url;
+}
+
+function updateAutoComponentImagePreview() {
+  const name = document.getElementById('new-comp-name')?.value.trim() || '';
+  const code = document.getElementById('new-comp-code')?.value.trim() || '';
+  const cat = document.getElementById('new-comp-cat')?.value.trim() || '';
+  const previewImg = document.getElementById('new-comp-auto-img-preview');
+  const previewLabel = document.getElementById('new-comp-auto-img-label');
+  
+  if (!previewImg) return;
+
+  const result = findAutoComponentImageDetails(name, code, cat);
+  previewImg.src = result.url;
+  if (previewLabel) {
+    if (name || code) {
+      previewLabel.innerHTML = `<span class="text-blue-600 dark:text-blue-400 font-bold">Auto-Matched: ${result.matchLabel}</span>`;
+    } else {
+      previewLabel.textContent = 'Type name or code above to auto-match image';
+    }
+  }
+}
 
 // Clean Initial State: Admin user preserved, all inventory and branch lists blank
 const INITIAL_DATA = {
@@ -108,6 +266,24 @@ function loadData() {
         }
       });
       if (updated) {
+        saveData();
+      }
+    }
+
+    // Ensure all components have buy date/time and auto-matched images
+    if (state && Array.isArray(state.components) && state.components.length > 0) {
+      let compsUpdated = false;
+      state.components.forEach(c => {
+        if (!c.createdAt) {
+          c.createdAt = new Date().toISOString();
+          compsUpdated = true;
+        }
+        if (!c.image || c.image === DEFAULT_COMP_IMG) {
+          c.image = findAutoComponentImage(c.name, c.code, c.category);
+          compsUpdated = true;
+        }
+      });
+      if (compsUpdated) {
         saveData();
       }
     }
@@ -1032,10 +1208,15 @@ function renderStaffPortal() {
                     <h4 class="font-extrabold text-slate-900 dark:text-white text-xs truncate" title="${escapeHtml(comp.name)}">
                       ${escapeHtml(comp.name)}
                     </h4>
-                    <div class="flex items-center gap-1.5 mt-0.5">
+                    <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       <span class="text-[10px] text-slate-400">Branch Stock:</span>
                       <span class="font-mono font-bold text-[10px] ${stock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}">
                         ${stock} ${comp.unit || 'units'}
+                      </span>
+                      <span class="text-[10px] text-slate-300 dark:text-slate-600">•</span>
+                      <span class="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <i data-lucide="clock" class="w-2.5 h-2.5 text-emerald-500"></i>
+                        Bought: ${formatDateTime(comp.createdAt)}
                       </span>
                     </div>
                   </div>
@@ -1701,7 +1882,14 @@ function renderPerOfficeComponentList() {
           <div class="min-w-0">
             <span class="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400 block">${escapeHtml(comp.code)}</span>
             <h4 class="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate" title="${escapeHtml(comp.name)}">${escapeHtml(comp.name)}</h4>
-            <span class="text-[11px] text-slate-500 dark:text-slate-400">${escapeHtml(comp.category)}</span>
+            <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+              <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">${escapeHtml(comp.category || 'General')}</span>
+              <span class="text-[10px] text-slate-300 dark:text-slate-600">•</span>
+              <span class="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md font-medium">
+                <i data-lucide="calendar" class="w-3 h-3 text-emerald-500"></i>
+                <span>Bought: <strong>${formatDateTime(comp.createdAt)}</strong></span>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -1759,7 +1947,7 @@ function staffAddCompToList() {
   let number = numInput ? numInput.value.trim() : '';
   const count = parseInt(countInput ? countInput.value : '1', 10) || 1;
   const reason = reasonInput ? reasonInput.value.trim() : '';
-  const image = (imgDataInput && imgDataInput.value) ? imgDataInput.value : DEFAULT_COMP_IMG;
+  const image = (imgDataInput && imgDataInput.value) ? imgDataInput.value : findAutoComponentImage(name, number, 'General');
 
   if (!name) {
     alert('Please enter a Component Name (e.g. Arduino Uno, 10k Resistor, Stepper Motor).');
@@ -2299,7 +2487,7 @@ function adminSendComponent(requestId) {
     const compName = it.componentName || it.name || 'Component';
     const compNumber = it.componentNumber || it.number || ('CMP-' + Math.floor(100 + Math.random() * 900));
     const count = parseInt(it.countNeeded || it.count, 10) || 1;
-    const img = it.image || DEFAULT_COMP_IMG;
+    const img = it.image || findAutoComponentImage(compName, compNumber, 'General');
 
     let comp = state.components.find(c => 
       (it.componentId && c.id === it.componentId) ||
@@ -2316,7 +2504,8 @@ function adminSendComponent(requestId) {
         unit: 'units',
         minStock: 5,
         image: img,
-        description: it.reason || 'Added from staff requisition'
+        description: it.reason || 'Added from staff requisition',
+        createdAt: new Date().toISOString()
       };
       state.components.push(comp);
     }
@@ -2793,14 +2982,18 @@ function handleNewComponentSubmit(e) {
   const name = document.getElementById('new-comp-name').value.trim();
   const category = document.getElementById('new-comp-cat').value.trim() || 'General';
   const unit = document.getElementById('new-comp-unit').value.trim() || 'pcs';
-  const minStock = parseInt(document.getElementById('new-comp-min').value, 10) || 10;
-  const image = document.getElementById('new-comp-img').value.trim() || 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=200&auto=format&fit=crop&q=80';
+  const minStock = 5; // Default safety threshold since min alert stock removed from form
   const description = document.getElementById('new-comp-desc').value.trim();
 
   if (!code || !name) {
     alert('Component Code and Name are required!');
     return;
   }
+
+  // Automatically find image based on name and code
+  const image = findAutoComponentImage(name, code, category);
+  const now = new Date();
+  const createdAt = now.toISOString();
 
   const newComp = {
     id: 'cmp-' + Date.now(),
@@ -2810,7 +3003,8 @@ function handleNewComponentSubmit(e) {
     unit,
     minStock,
     image,
-    description
+    description,
+    createdAt
   };
 
   state.components.push(newComp);
@@ -2823,11 +3017,11 @@ function handleNewComponentSubmit(e) {
 
   saveData();
   document.getElementById('new-comp-form').reset();
-  document.getElementById('new-comp-img-preview-container')?.classList.add('hidden');
+  updateAutoComponentImagePreview();
   closeModal('modal-new');
   renderApp();
   renderSketchMap();
-  showToast(`Added component "${name}" with initial stock!`, 'success');
+  showToast(`Added component "${name}" (Bought: ${formatDateTime(createdAt)})!`, 'success');
 }
 
 // High-Precision Google Location Link & GPS Parser Engine
@@ -3525,26 +3719,14 @@ function setupEventListeners() {
     if (leafletMap) leafletMap.invalidateSize();
   });
 
-  const compFileInput = document.getElementById('new-comp-file');
-  if (compFileInput) {
-    compFileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const base64 = event.target.result;
-          document.getElementById('new-comp-img').value = base64;
-          const preview = document.getElementById('new-comp-img-preview');
-          const previewContainer = document.getElementById('new-comp-img-preview-container');
-          if (preview && previewContainer) {
-            preview.src = base64;
-            previewContainer.classList.remove('hidden');
-          }
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  }
+  // Auto Component Image Finder: Live detection as user types Name or Code
+  const compNameInput = document.getElementById('new-comp-name');
+  const compCodeInput = document.getElementById('new-comp-code');
+  const compCatInput = document.getElementById('new-comp-cat');
+  
+  compNameInput?.addEventListener('input', updateAutoComponentImagePreview);
+  compCodeInput?.addEventListener('input', updateAutoComponentImagePreview);
+  compCatInput?.addEventListener('input', updateAutoComponentImagePreview);
 
   // Live Google Location Link Coordinate Detector
   const offLinkInput = document.getElementById('new-off-location-link');
