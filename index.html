@@ -886,6 +886,86 @@
   </div>
 
   <!-- ======================================================== -->
+  <!-- MODAL: EDIT COMPONENT IN OFFICE -->
+  <!-- ======================================================== -->
+  <div id="modal-edit-component" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 max-h-[92vh] flex flex-col">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+        <div>
+          <h3 class="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+            <i data-lucide="edit-3" class="w-5 h-5 text-amber-500"></i>
+            Edit Component Details
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">Modify component specifications, code, name, unit, and branch stock</p>
+        </div>
+        <button onclick="closeModal('modal-edit-component')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Form -->
+      <form id="edit-comp-form" class="space-y-3.5 overflow-y-auto pr-1">
+        <input type="hidden" id="edit-comp-id">
+        <input type="hidden" id="edit-comp-office-id">
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Component Code / SKU *</label>
+            <input type="text" id="edit-comp-code" required placeholder="e.g. AUR-STM32" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Component Name *</label>
+            <input type="text" id="edit-comp-name" required placeholder="e.g. STM32 ARM Cortex-M4 Board" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Category</label>
+            <input type="text" id="edit-comp-cat" placeholder="e.g. Microcontrollers, Sensors" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Unit</label>
+            <input type="text" id="edit-comp-unit" placeholder="pcs, pack, units" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+          </div>
+        </div>
+
+        <!-- Current Office Stock & Bought Date -->
+        <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/80">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+              <span>Stock in this Branch:</span>
+              <span id="edit-comp-office-name" class="text-[10px] text-blue-600 dark:text-blue-400 font-bold truncate max-w-[100px]">Branch</span>
+            </label>
+            <input type="number" id="edit-comp-stock" min="0" required class="w-full text-xs p-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono font-bold text-center">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Purchase Date & Time</label>
+            <input type="datetime-local" id="edit-comp-date" class="w-full text-xs p-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Description / Technical Notes</label>
+          <textarea id="edit-comp-desc" rows="2" placeholder="Specifications, pinouts, or warehouse notes..." class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"></textarea>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <button type="button" onclick="closeModal('modal-edit-component')" class="px-4 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition">
+            Cancel
+          </button>
+          <button type="submit" class="px-5 py-2.5 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-md transition flex items-center gap-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i> Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
   <!-- MODAL: "RECEIVED" (Stock In) -->
   <!-- ======================================================== -->
   <div id="modal-received" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">

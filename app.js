@@ -1882,6 +1882,13 @@ function renderPerOfficeComponentList() {
             </span>
           </div>
           <button 
+            onclick="openEditComponentModal('${comp.id}', '${currentOffice.id}')"
+            title="Edit this component"
+            class="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition"
+          >
+            <i data-lucide="edit-3" class="w-4 h-4"></i>
+          </button>
+          <button 
             onclick="openQuickMoveModal('${comp.id}', '${currentOffice.id}')"
             title="Move this component to another office"
             class="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded-lg transition"
@@ -2608,6 +2615,129 @@ window.staffAddCompToList = staffAddCompToList;
 window.staffRemoveCompFromList = staffRemoveCompFromList;
 window.staffClearAskList = staffClearAskList;
 window.staffSubmitAskListToAdmin = staffSubmitAskListToAdmin;
+
+// =========================================================
+// EDIT COMPONENT IN OFFICE
+// =========================================================
+
+function openEditComponentModal(componentId, officeId) {
+  const comp = state.components.find(c => c.id === componentId);
+  if (!comp) return;
+
+  const currentOfficeId = officeId || selectedOfficeId || (state.offices[0]?.id);
+  const office = state.offices.find(o => o.id === currentOfficeId) || state.offices[0];
+  const currentStock = office ? getStock(comp.id, office.id) : 0;
+
+  const idField = document.getElementById('edit-comp-id');
+  const officeIdField = document.getElementById('edit-comp-office-id');
+  const officeNameEl = document.getElementById('edit-comp-office-name');
+  const codeField = document.getElementById('edit-comp-code');
+  const nameField = document.getElementById('edit-comp-name');
+  const catField = document.getElementById('edit-comp-cat');
+  const unitField = document.getElementById('edit-comp-unit');
+  const stockField = document.getElementById('edit-comp-stock');
+  const dateField = document.getElementById('edit-comp-date');
+  const descField = document.getElementById('edit-comp-desc');
+
+  if (idField) idField.value = comp.id;
+  if (officeIdField) officeIdField.value = office ? office.id : '';
+  if (officeNameEl) officeNameEl.textContent = office ? `${office.name}` : 'Branch';
+  if (codeField) codeField.value = comp.code || '';
+  if (nameField) nameField.value = comp.name || '';
+  if (catField) catField.value = comp.category || '';
+  if (unitField) unitField.value = comp.unit || 'pcs';
+  if (stockField) stockField.value = currentStock;
+
+  if (dateField) {
+    if (comp.createdAt) {
+      try {
+        const dt = new Date(comp.createdAt);
+        if (!isNaN(dt.getTime())) {
+          const tzOffset = dt.getTimezoneOffset() * 60000;
+          const localIso = new Date(dt.getTime() - tzOffset).toISOString().slice(0, 16);
+          dateField.value = localIso;
+        } else {
+          dateField.value = '';
+        }
+      } catch (err) {
+        dateField.value = '';
+      }
+    } else {
+      dateField.value = '';
+    }
+  }
+
+  if (descField) descField.value = comp.description || '';
+
+  openModal('modal-edit-component');
+  if (window.lucide) lucide.createIcons();
+}
+
+function handleEditComponentSubmit(e) {
+  e.preventDefault();
+  const compId = document.getElementById('edit-comp-id').value;
+  const officeId = document.getElementById('edit-comp-office-id').value;
+  const code = document.getElementById('edit-comp-code').value.trim();
+  const name = document.getElementById('edit-comp-name').value.trim();
+  const category = document.getElementById('edit-comp-cat').value.trim() || 'General';
+  const unit = document.getElementById('edit-comp-unit').value.trim() || 'pcs';
+  const stockVal = parseInt(document.getElementById('edit-comp-stock').value, 10);
+  const dateVal = document.getElementById('edit-comp-date').value;
+  const description = document.getElementById('edit-comp-desc').value.trim();
+
+  if (!code || !name) {
+    alert('Component Code and Name are required!');
+    return;
+  }
+
+  const comp = state.components.find(c => c.id === compId);
+  if (!comp) {
+    alert('Component not found.');
+    return;
+  }
+
+  // Update component metadata
+  comp.code = code;
+  comp.name = name;
+  comp.category = category;
+  comp.unit = unit;
+  comp.description = description;
+
+  if (dateVal) {
+    comp.createdAt = new Date(dateVal).toISOString();
+  }
+
+  // Update stock for current office
+  if (!isNaN(stockVal) && officeId) {
+    const prevStock = getStock(comp.id, officeId);
+    if (prevStock !== stockVal) {
+      setStock(comp.id, officeId, Math.max(0, stockVal));
+      const office = state.offices.find(o => o.id === officeId);
+      const diff = stockVal - prevStock;
+      state.history.unshift({
+        id: 'hist-' + Date.now(),
+        date: new Date().toISOString(),
+        type: diff >= 0 ? 'Stock Correction (+)' : 'Stock Correction (-)',
+        componentId: comp.id,
+        componentName: comp.name,
+        componentNumber: comp.code,
+        fromOfficeId: officeId,
+        toOfficeId: officeId,
+        fromOfficeName: office ? office.name : 'Office',
+        toOfficeName: office ? office.name : 'Office',
+        count: Math.abs(diff),
+        staffName: state.currentUser ? state.currentUser.name : 'Admin',
+        note: `Component edit: adjusted stock from ${prevStock} to ${stockVal} ${comp.unit}`
+      });
+    }
+  }
+
+  saveData();
+  closeModal('modal-edit-component');
+  renderApp();
+  renderSketchMap();
+  showToast(`Updated component "${comp.name}" (${comp.code}) successfully!`, 'success');
+}
 
 // MOVING
 function openQuickMoveModal(componentId, fromOfficeId) {
@@ -3676,6 +3806,7 @@ function setupEventListeners() {
   document.getElementById('admin-direct-send-form')?.addEventListener('submit', handleAdminDirectSendSubmit);
   document.getElementById('move-form')?.addEventListener('submit', handleMoveSubmit);
   document.getElementById('received-form')?.addEventListener('submit', handleReceivedSubmit);
+  document.getElementById('edit-comp-form')?.addEventListener('submit', handleEditComponentSubmit);
   
   document.getElementById('new-comp-form')?.addEventListener('submit', handleNewComponentSubmit);
   document.getElementById('new-off-form')?.addEventListener('submit', handleNewOfficeSubmit);
@@ -4002,3 +4133,5 @@ function queueMongoSync() {
 window.checkMongoConnection = checkMongoConnection;
 window.syncFromMongoDB = syncFromMongoDB;
 window.syncToMongoDB = syncToMongoDB;
+window.openEditComponentModal = openEditComponentModal;
+window.handleEditComponentSubmit = handleEditComponentSubmit;
