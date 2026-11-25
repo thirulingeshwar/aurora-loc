@@ -1076,6 +1076,113 @@ function renderApp() {
 }
 
 // -------------------------------------------------------------
+// COMPONENT FOLDER HELPERS (Same Name, Multiple Codes)
+// -------------------------------------------------------------
+
+function getFolderSlug(name) {
+  return String(name || 'folder')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function toggleCompFolder(folderKey) {
+  const body = document.getElementById(`comp-folder-body-${folderKey}`);
+  const chevron = document.getElementById(`comp-folder-chevron-${folderKey}`);
+  const icon = document.getElementById(`comp-folder-icon-${folderKey}`);
+  if (!body) return;
+
+  const isHidden = body.classList.contains('hidden');
+  if (isHidden) {
+    body.classList.remove('hidden');
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+    if (icon) icon.setAttribute('data-lucide', 'folder-open');
+  } else {
+    body.classList.add('hidden');
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+    if (icon) icon.setAttribute('data-lucide', 'folder');
+  }
+  if (window.lucide) lucide.createIcons();
+}
+
+function renderStaffComponentRow(comp, office) {
+  const stock = getStock(comp.id, office.id);
+  return `
+    <div class="staff-comp-row bg-white dark:bg-slate-900 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 transition shadow-xs p-3.5 flex flex-col md:grid md:grid-cols-12 gap-3 items-center text-xs">
+      <!-- 1. Component Name -->
+      <div class="col-span-4 min-w-0 w-full pr-1">
+        <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider md:hidden block">Component Name</span>
+        <h4 class="font-extrabold text-slate-900 dark:text-white text-xs truncate" title="${escapeHtml(comp.name)}">
+          ${escapeHtml(comp.name)}
+        </h4>
+        <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+          <span class="text-[10px] text-slate-400">Branch Stock:</span>
+          <span class="font-mono font-bold text-[10px] ${stock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}">
+            ${stock} ${comp.unit || 'units'}
+          </span>
+          <span class="text-[10px] text-slate-300 dark:text-slate-600">•</span>
+          <span class="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+            <i data-lucide="clock" class="w-2.5 h-2.5 text-emerald-500"></i>
+            Bought: ${formatDateTime(comp.createdAt)}
+          </span>
+        </div>
+      </div>
+
+      <!-- 2. Component Number -->
+      <div class="col-span-2 min-w-0 w-full">
+        <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider md:hidden block">Component Number</span>
+        <span class="font-mono font-bold text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-lg border border-blue-200/80 dark:border-blue-900/60 inline-block">
+          ${escapeHtml(comp.code)}
+        </span>
+      </div>
+
+      <!-- 3. Count Needed -->
+      <div class="col-span-2 flex flex-col items-center justify-center w-full">
+        <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider md:hidden block mb-1">Count Needed</span>
+        <div class="flex items-center gap-1">
+          <button type="button" onclick="adjustCount('staff-row-qty-${comp.id}', -1)" class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold cursor-pointer transition">-</button>
+          <input 
+            type="number" 
+            min="0" 
+            value="0" 
+            id="staff-row-qty-${comp.id}" 
+            data-component-id="${comp.id}"
+            class="staff-row-count-input w-14 p-1.5 text-center font-bold text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
+            placeholder="0"
+          >
+          <button type="button" onclick="adjustCount('staff-row-qty-${comp.id}', 1)" class="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold cursor-pointer transition">+</button>
+        </div>
+      </div>
+
+      <!-- 4. Reason -->
+      <div class="col-span-3 min-w-0 w-full">
+        <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider md:hidden block mb-1">Reason</span>
+        <input 
+          type="text" 
+          id="staff-row-reason-${comp.id}" 
+          data-component-id="${comp.id}"
+          placeholder="Reason for needing component..." 
+          class="staff-row-reason-input w-full text-xs p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500"
+        >
+      </div>
+
+      <!-- 5. Action: Ask Admin -->
+      <div class="col-span-1 flex justify-end w-full md:w-auto">
+        <button 
+          type="button" 
+          onclick="staffAskFromRow('${comp.id}')" 
+          class="w-full md:w-auto inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
+          title="Ask Admin to send this component"
+        >
+          <i data-lucide="send" class="w-3 h-3"></i>
+          <span>Ask</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// -------------------------------------------------------------
 // DEDICATED STAFF PORTAL IMPLEMENTATION
 // ("they only ask and see the compuent list only")
 // -------------------------------------------------------------
@@ -1187,82 +1294,52 @@ function renderStaffPortal() {
 
           <!-- Component Rows List -->
           <div id="staff-comp-rows-container" class="space-y-2.5">
-            ${state.components.map(comp => {
-              const stock = getStock(comp.id, office.id);
-              return `
-                <div class="staff-comp-row bg-white dark:bg-slate-900 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 transition shadow-xs p-3.5 flex flex-col md:grid md:grid-cols-12 gap-3 items-center text-xs">
-                  <!-- 1. Component Name -->
-                  <div class="col-span-4 min-w-0 w-full pr-1">
-                    <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider md:hidden block">Component Name</span>
-                    <h4 class="font-extrabold text-slate-900 dark:text-white text-xs truncate" title="${escapeHtml(comp.name)}">
-                      ${escapeHtml(comp.name)}
-                    </h4>
-                    <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      <span class="text-[10px] text-slate-400">Branch Stock:</span>
-                      <span class="font-mono font-bold text-[10px] ${stock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}">
-                        ${stock} ${comp.unit || 'units'}
-                      </span>
-                      <span class="text-[10px] text-slate-300 dark:text-slate-600">•</span>
-                      <span class="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                        <i data-lucide="clock" class="w-2.5 h-2.5 text-emerald-500"></i>
-                        Bought: ${formatDateTime(comp.createdAt)}
-                      </span>
+            ${(() => {
+              const staffGroupsMap = new Map();
+              state.components.forEach(comp => {
+                const rawName = (comp.name || 'Unnamed Component').trim();
+                const key = rawName.toLowerCase();
+                if (!staffGroupsMap.has(key)) {
+                  staffGroupsMap.set(key, { displayName: rawName, items: [] });
+                }
+                staffGroupsMap.get(key).items.push(comp);
+              });
+
+              const parts = [];
+              staffGroupsMap.forEach((group) => {
+                if (group.items.length > 1) {
+                  const folderKey = 'staff_' + getFolderSlug(group.displayName);
+                  const codesSummary = group.items.map(c => c.code).join(', ');
+                  parts.push(`
+                    <div class="staff-comp-entry rounded-2xl border-2 border-amber-300/80 dark:border-amber-700/70 bg-amber-50/20 dark:bg-amber-950/20 overflow-hidden shadow-xs">
+                      <div onclick="toggleCompFolder('${folderKey}')" class="cursor-pointer p-3 bg-amber-100/70 dark:bg-amber-950/50 flex items-center justify-between gap-3 select-none hover:bg-amber-100/90 dark:hover:bg-amber-950/70 transition">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                          <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold flex-shrink-0">
+                            <i id="comp-folder-icon-${folderKey}" data-lucide="folder-open" class="w-4 h-4"></i>
+                          </div>
+                          <div class="min-w-0">
+                            <span class="text-[10px] font-black uppercase text-amber-700 dark:text-amber-300 tracking-wider">Same Name Folder &bull; ${group.items.length} Codes</span>
+                            <h4 class="font-extrabold text-xs text-slate-900 dark:text-white truncate">${escapeHtml(group.displayName)}</h4>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                          <span class="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 hidden sm:inline">${escapeHtml(codesSummary)}</span>
+                          <div id="comp-folder-chevron-${folderKey}" class="text-amber-700 dark:text-amber-300 transition-transform" style="transform: rotate(180deg);">
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                          </div>
+                        </div>
+                      </div>
+                      <div id="comp-folder-body-${folderKey}" class="p-2 space-y-2 bg-white/60 dark:bg-slate-900/60 border-t border-amber-200/60 dark:border-amber-800/50">
+                        ${group.items.map(comp => renderStaffComponentRow(comp, office)).join('')}
+                      </div>
                     </div>
-                  </div>
-
-                  <!-- 3. Component Number -->
-                  <div class="col-span-2 min-w-0 w-full">
-                    <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider md:hidden block">Component Number</span>
-                    <span class="font-mono font-bold text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-lg border border-blue-200/80 dark:border-blue-900/60 inline-block">
-                      ${escapeHtml(comp.code)}
-                    </span>
-                  </div>
-
-                  <!-- 4. Count Needed -->
-                  <div class="col-span-2 flex flex-col items-center justify-center w-full">
-                    <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider md:hidden block mb-1">Count Needed</span>
-                    <div class="flex items-center gap-1">
-                      <button type="button" onclick="adjustCount('staff-row-qty-${comp.id}', -1)" class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold cursor-pointer transition">-</button>
-                      <input 
-                        type="number" 
-                        min="0" 
-                        value="0" 
-                        id="staff-row-qty-${comp.id}" 
-                        data-component-id="${comp.id}"
-                        class="staff-row-count-input w-14 p-1.5 text-center font-bold text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
-                        placeholder="0"
-                      >
-                      <button type="button" onclick="adjustCount('staff-row-qty-${comp.id}', 1)" class="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold cursor-pointer transition">+</button>
-                    </div>
-                  </div>
-
-                  <!-- 5. Reason -->
-                  <div class="col-span-3 min-w-0 w-full">
-                    <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider md:hidden block mb-1">Reason</span>
-                    <input 
-                      type="text" 
-                      id="staff-row-reason-${comp.id}" 
-                      data-component-id="${comp.id}"
-                      placeholder="Reason for needing component..." 
-                      class="staff-row-reason-input w-full text-xs p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500"
-                    >
-                  </div>
-
-                  <!-- 6. Action: Ask Admin -->
-                  <div class="col-span-1 flex justify-end w-full md:w-auto">
-                    <button 
-                      type="button" 
-                      onclick="staffAskFromRow('${comp.id}')" 
-                      class="w-full md:w-auto inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
-                      title="Ask Admin to send this component"
-                    >
-                      <i data-lucide="send" class="w-3 h-3"></i>
-                      <span>Ask</span>
-                    </button>
-                  </div>
-                </div>
-              `;
-            }).join('')}
+                  `);
+                } else {
+                  parts.push(renderStaffComponentRow(group.items[0], office));
+                }
+              });
+              return parts.join('');
+            })()}
           </div>
         </div>
       `;
@@ -1720,6 +1797,123 @@ function renderOfficeList() {
   }).join('');
 }
 
+function renderSingleOfficeComponentCard(comp, currentOffice, isInsideFolder = false) {
+  const count = getStock(comp.id, currentOffice.id);
+  const isZero = count === 0;
+  const isLow = count > 0 && count <= comp.minStock;
+
+  let badgeClass = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
+  let badgeText = 'In Stock';
+  if (isZero) {
+    badgeClass = 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300';
+    badgeText = 'Out of Stock';
+  } else if (isLow) {
+    badgeClass = 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
+    badgeText = 'Low';
+  }
+
+  const wrapperClass = isInsideFolder
+    ? 'p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 hover:shadow-xs transition'
+    : 'office-comp-entry p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 hover:shadow-xs transition';
+
+  return `
+    <div class="${wrapperClass}">
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-md border border-blue-200/80 dark:border-blue-900/60">${escapeHtml(comp.code)}</span>
+          <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">${escapeHtml(comp.category || 'General')}</span>
+        </div>
+        ${!isInsideFolder ? `<h4 class="font-bold text-sm text-slate-900 dark:text-white truncate mt-1" title="${escapeHtml(comp.name)}">${escapeHtml(comp.name)}</h4>` : ''}
+        <div class="flex items-center gap-2 mt-1 flex-wrap">
+          <span class="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md font-medium">
+            <i data-lucide="calendar" class="w-3 h-3 text-emerald-500"></i>
+            <span>Bought: <strong>${formatDateTime(comp.createdAt)}</strong></span>
+          </span>
+          ${comp.description ? `<span class="text-[11px] text-slate-400 truncate max-w-sm">&mdash; ${escapeHtml(comp.description)}</span>` : ''}
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        <div class="text-right">
+          <div class="text-base sm:text-lg font-black ${isZero ? 'text-red-500' : 'text-slate-900 dark:text-white'}">
+            ${count} <span class="text-xs font-normal text-slate-400">${comp.unit || 'units'}</span>
+          </div>
+          <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${badgeClass}">
+            ${badgeText}
+          </span>
+        </div>
+        <button 
+          onclick="openEditComponentModal('${comp.id}', '${currentOffice.id}')"
+          title="Edit this component"
+          class="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition cursor-pointer"
+        >
+          <i data-lucide="edit-3" class="w-4 h-4"></i>
+        </button>
+        <button 
+          onclick="openQuickMoveModal('${comp.id}', '${currentOffice.id}')"
+          title="Move this component to another office"
+          class="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded-lg transition cursor-pointer"
+        >
+          <i data-lucide="arrow-right-left" class="w-4 h-4"></i>
+        </button>
+        <button 
+          onclick="deleteComponent('${comp.id}')"
+          title="Delete this component"
+          class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition cursor-pointer"
+        >
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderOfficeComponentFolder(group, currentOffice) {
+  const folderKey = 'office_' + getFolderSlug(group.displayName);
+  const totalStock = group.items.reduce((sum, comp) => sum + getStock(comp.id, currentOffice.id), 0);
+  const codesSummary = group.items.map(c => c.code).join(', ');
+
+  return `
+    <div class="office-comp-entry rounded-2xl border-2 border-amber-300/80 dark:border-amber-700/70 bg-amber-50/20 dark:bg-amber-950/20 overflow-hidden shadow-xs">
+      <div onclick="toggleCompFolder('${folderKey}')" class="cursor-pointer p-3 bg-amber-100/70 dark:bg-amber-950/50 flex items-center justify-between gap-3 select-none hover:bg-amber-100/90 dark:hover:bg-amber-950/70 transition">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold flex-shrink-0">
+            <i id="comp-folder-icon-${folderKey}" data-lucide="folder-open" class="w-5 h-5"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[9px] font-black uppercase text-amber-700 dark:text-amber-300 bg-amber-200/60 dark:bg-amber-900/60 px-1.5 py-0.5 rounded tracking-wider">
+                Folder &bull; ${group.items.length} Codes
+              </span>
+            </div>
+            <h4 class="font-extrabold text-sm text-slate-900 dark:text-white truncate mt-0.5" title="${escapeHtml(group.displayName)}">
+              ${escapeHtml(group.displayName)}
+            </h4>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono font-medium truncate mt-0.5">
+              Codes: <span class="text-slate-700 dark:text-slate-300 font-bold">${escapeHtml(codesSummary)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <div class="text-right">
+            <span class="block text-[9px] uppercase font-bold text-amber-600 dark:text-amber-400">Total In Branch</span>
+            <span class="text-sm sm:text-base font-black text-amber-800 dark:text-amber-200 font-mono">${totalStock}</span>
+            <span class="text-[10px] text-slate-400">units</span>
+          </div>
+          <div id="comp-folder-chevron-${folderKey}" class="text-amber-700 dark:text-amber-300 transition-transform" style="transform: rotate(180deg);">
+            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+          </div>
+        </div>
+      </div>
+
+      <div id="comp-folder-body-${folderKey}" class="p-2 space-y-2 bg-white/60 dark:bg-slate-900/60 border-t border-amber-200/60 dark:border-amber-800/50">
+        ${group.items.map(comp => renderSingleOfficeComponentCard(comp, currentOffice, true)).join('')}
+      </div>
+    </div>
+  `;
+}
+
 // Right Panel: Per Office Components
 function renderPerOfficeComponentList() {
   const officeHeader = document.getElementById('selected-office-header');
@@ -1840,72 +2034,28 @@ function renderPerOfficeComponentList() {
     return;
   }
 
-  container.innerHTML = state.components.map(comp => {
-    const count = getStock(comp.id, currentOffice.id);
-    const isZero = count === 0;
-    const isLow = count > 0 && count <= comp.minStock;
-
-    let badgeClass = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
-    let badgeText = 'In Stock';
-    if (isZero) {
-      badgeClass = 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300';
-      badgeText = 'Out of Stock';
-    } else if (isLow) {
-      badgeClass = 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
-      badgeText = 'Low';
+  // Group components by normalized name (Same name, multiple codes into one folder)
+  const groupsMap = new Map();
+  state.components.forEach(comp => {
+    const rawName = (comp.name || 'Unnamed Component').trim();
+    const key = rawName.toLowerCase();
+    if (!groupsMap.has(key)) {
+      groupsMap.set(key, { displayName: rawName, items: [] });
     }
+    groupsMap.get(key).items.push(comp);
+  });
 
-    return `
-      <div class="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 hover:shadow-xs transition">
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-2">
-            <span class="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-md border border-blue-200/80 dark:border-blue-900/60">${escapeHtml(comp.code)}</span>
-            <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">${escapeHtml(comp.category || 'General')}</span>
-          </div>
-          <h4 class="font-bold text-sm text-slate-900 dark:text-white truncate mt-1" title="${escapeHtml(comp.name)}">${escapeHtml(comp.name)}</h4>
-          <div class="flex items-center gap-2 mt-1 flex-wrap">
-            <span class="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md font-medium">
-              <i data-lucide="calendar" class="w-3 h-3 text-emerald-500"></i>
-              <span>Bought: <strong>${formatDateTime(comp.createdAt)}</strong></span>
-            </span>
-            ${comp.description ? `<span class="text-[11px] text-slate-400 truncate max-w-sm">&mdash; ${escapeHtml(comp.description)}</span>` : ''}
-          </div>
-        </div>
+  const cardsHtml = [];
+  groupsMap.forEach(group => {
+    if (group.items.length > 1) {
+      cardsHtml.push(renderOfficeComponentFolder(group, currentOffice));
+    } else {
+      cardsHtml.push(renderSingleOfficeComponentCard(group.items[0], currentOffice, false));
+    }
+  });
 
-        <div class="flex items-center gap-3 flex-shrink-0">
-          <div class="text-right">
-            <div class="text-base sm:text-lg font-black ${isZero ? 'text-red-500' : 'text-slate-900 dark:text-white'}">
-              ${count} <span class="text-xs font-normal text-slate-400">${comp.unit}</span>
-            </div>
-            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${badgeClass}">
-              ${badgeText}
-            </span>
-          </div>
-          <button 
-            onclick="openEditComponentModal('${comp.id}', '${currentOffice.id}')"
-            title="Edit this component"
-            class="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition"
-          >
-            <i data-lucide="edit-3" class="w-4 h-4"></i>
-          </button>
-          <button 
-            onclick="openQuickMoveModal('${comp.id}', '${currentOffice.id}')"
-            title="Move this component to another office"
-            class="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded-lg transition"
-          >
-            <i data-lucide="arrow-right-left" class="w-4 h-4"></i>
-          </button>
-          <button 
-            onclick="deleteComponent('${comp.id}')"
-            title="Delete this component"
-            class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition"
-          >
-            <i data-lucide="trash-2" class="w-4 h-4"></i>
-          </button>
-        </div>
-      </div>
-    `;
-  }).join('');
+  container.innerHTML = cardsHtml.join('');
+  if (window.lucide) lucide.createIcons();
 }
 
 // =========================================================
@@ -3888,19 +4038,27 @@ function setupEventListeners() {
     offLinkInput.addEventListener('paste', () => setTimeout(handleLinkInput, 50));
   }
 
-  document.getElementById('search-input')?.addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase();
+  const handleOfficeCompFilter = (q) => {
+    q = (q || '').toLowerCase().trim();
     document.querySelectorAll('#per-office-components-container > div').forEach(card => {
       const text = card.textContent.toLowerCase();
-      card.style.display = text.includes(q) ? 'flex' : 'none';
+      card.style.display = (!q || text.includes(q)) ? '' : 'none';
     });
+  };
+
+  document.getElementById('search-input')?.addEventListener('input', (e) => {
+    handleOfficeCompFilter(e.target.value);
+  });
+
+  document.getElementById('office-comp-search-input')?.addEventListener('input', (e) => {
+    handleOfficeCompFilter(e.target.value);
   });
 
   document.getElementById('staff-search-input')?.addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase().trim();
-    document.querySelectorAll('.staff-comp-row').forEach(row => {
+    document.querySelectorAll('.staff-comp-entry, .staff-comp-row').forEach(row => {
       const text = row.textContent.toLowerCase();
-      row.style.display = text.includes(q) ? 'grid' : 'none';
+      row.style.display = (!q || text.includes(q)) ? '' : 'none';
     });
   });
 }
@@ -4135,3 +4293,4 @@ window.syncFromMongoDB = syncFromMongoDB;
 window.syncToMongoDB = syncToMongoDB;
 window.openEditComponentModal = openEditComponentModal;
 window.handleEditComponentSubmit = handleEditComponentSubmit;
+window.toggleCompFolder = toggleCompFolder;

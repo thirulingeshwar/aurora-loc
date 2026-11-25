@@ -445,6 +445,19 @@
             </button>
           </div>
 
+          <!-- Quick Search Filter for Components & Folders -->
+          <div class="mb-2">
+            <div class="relative">
+              <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+              <input 
+                type="text" 
+                id="office-comp-search-input" 
+                placeholder="Search components, code, or folder..." 
+                class="w-full text-xs pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500"
+              >
+            </div>
+          </div>
+
           <!-- Scrollable Component Cards List -->
           <div id="per-office-components-container" class="flex-1 overflow-y-auto space-y-2 pr-1">
             <!-- Dynamically populated in app.js with Image, Name, Count! -->
